@@ -14,8 +14,9 @@ public class UserMapper implements Mapper<User, UserDto> {
     public UserDto toDto(User entity) {
         UserDto dto = new UserDto();
         dto.setUsername(entity.getUsername());
+        dto.setEmail(entity.getEmail());
+        dto.setPhone(entity.getPhone());
 
-        // Convert roles to display format (remove ROLE_ prefix and convert to title case)
         String roles = entity.getRoles().stream()
                 .map(role -> role.getName().replace("ROLE_", ""))
                 .map(this::toTitleCase)
@@ -29,7 +30,8 @@ public class UserMapper implements Mapper<User, UserDto> {
     public User toEntity(UserDto dto) {
         User user = new User();
         user.setUsername(dto.getUsername());
-        // Password will be set separately after encoding
+        user.setEmail(dto.getEmail());
+        user.setPhone(dto.getPhone());
         return user;
     }
 

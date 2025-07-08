@@ -6,6 +6,7 @@ import com.buildscheduler.buildscheduler.dto.UserDto;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.security.JwtTokenHelper;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -37,21 +38,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<JwtAuthResponse>> login(@RequestBody JwtAuthRequest request) {
+    public ResponseEntity<ApiResponse<JwtAuthResponse>> login(@Valid @RequestBody JwtAuthRequest request) {
         this.authenticate(request.getUsername(), request.getPassword());
         UserDetails userDetails = this.userDetailsService.loadUserByUsername(request.getUsername());
         String token = this.jwtTokenHelper.generateToken(userDetails);
 
         JwtAuthResponse response = new JwtAuthResponse();
         response.setToken(token);
-
         return ResponseEntity.ok(
                 ApiResponse.ofSuccess("Login successful", response)
         );
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<UserDto>> register(@RequestBody UserDto userDto) {
+    public ResponseEntity<ApiResponse<UserDto>> register(@Valid @RequestBody UserDto userDto) {
         UserDto registeredUser = userService.registerNewUser(userDto);
         return new ResponseEntity<>(
                 ApiResponse.ofSuccess("User registered successfully", registeredUser),

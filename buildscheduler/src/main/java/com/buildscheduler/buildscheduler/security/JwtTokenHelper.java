@@ -1,5 +1,6 @@
 package com.buildscheduler.buildscheduler.security;
 
+import com.buildscheduler.buildscheduler.model.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -20,7 +21,28 @@ public class JwtTokenHelper {
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", userDetails.getAuthorities().iterator().next().getAuthority());
+
+        // Add custom claims for user details
+        if (userDetails instanceof User) {
+            User user = (User) userDetails;
+            claims.put("email", user.getEmail());
+            claims.put("phone", user.getPhone());
+            claims.put("userId", user.getId());
+        }
+
         return buildToken(claims, userDetails.getUsername());
+    }
+
+    public String getEmailFromToken(String token) {
+        return extractClaim(token, claims -> claims.get("email", String.class));
+    }
+
+    public String getPhoneFromToken(String token) {
+        return extractClaim(token, claims -> claims.get("phone", String.class));
+    }
+
+    public Long getUserIdFromToken(String token) {
+        return extractClaim(token, claims -> claims.get("userId", Long.class));
     }
 
     private String buildToken(Map<String, Object> claims, String subject) {

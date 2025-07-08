@@ -34,19 +34,23 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDto registerNewUser(UserDto userDto) {
+        // Check unique constraints
         if (userRepository.existsByUsername(userDto.getUsername())) {
             throw new UserAlreadyExistsException("User already exists with username: " + userDto.getUsername());
+        }
+
+        if (userRepository.existsByEmail(userDto.getEmail())) {
+            throw new UserAlreadyExistsException("Email already registered: " + userDto.getEmail());
         }
 
         // Convert to entity
         User user = userMapper.toEntity(userDto);
         user.setPassword(passwordEncoder.encode(userDto.getPassword()));
 
-        // Convert role to database format
+        // Assign role
         String roleName = "ROLE_" + userDto.getRole().toUpperCase().replace(" ", "_");
-
         Role selectedRole = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new RoleNotFoundException("Invalid role selected: " + userDto.getRole()));
+                .orElseThrow(() -> new RoleNotFoundException("Invalid role: " + userDto.getRole()));
 
         user.getRoles().add(selectedRole);
 
