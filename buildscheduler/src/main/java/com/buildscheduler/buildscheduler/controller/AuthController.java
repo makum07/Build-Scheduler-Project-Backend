@@ -39,14 +39,18 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<JwtAuthResponse>> login(@Valid @RequestBody JwtAuthRequest request) {
-        this.authenticate(request.getUsername(), request.getPassword());
-        UserDetails userDetails = this.userDetailsService.loadUserByUsername(request.getUsername());
+        this.authenticate(request.getEmail(), request.getPassword());
+        UserDetails userDetails = this.userDetailsService.loadUserByUsername(request.getEmail()); // uses email now
         String token = this.jwtTokenHelper.generateToken(userDetails);
 
         JwtAuthResponse response = new JwtAuthResponse();
         response.setToken(token);
-        return ResponseEntity.ok(
-                ApiResponse.ofSuccess("Login successful", response)
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Login successful", response));
+    }
+
+    private void authenticate(String email, String password) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, password)
         );
     }
 
@@ -59,9 +63,5 @@ public class AuthController {
         );
     }
 
-    private void authenticate(String username, String password) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password)
-        );
-    }
+
 }
