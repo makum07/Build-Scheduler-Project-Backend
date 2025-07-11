@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+
+import java.time.LocalDateTime;
 import java.util.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -40,13 +42,40 @@ public class User implements UserDetails {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
 
+
+
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(name = "user_skills",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "skill_id"))
+    private Set<Skill> skills = new HashSet<>();
+
+    @ElementCollection
+    @CollectionTable(name = "user_certifications", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "certification")
+    private Set<String> certifications = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<AvailabilitySlot> availabilitySlots = new HashSet<>();
+
+    @Column(nullable = false, columnDefinition = "varchar(20) default 'INCOMPLETE'")
+    private String profileStatus = "INCOMPLETE";
+
+    public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
+        return availabilitySlots.stream().anyMatch(slot -> slot.covers(start, end));
+    }
+
+
+
+
     // Required by UserDetails interface
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()
-                .map(role -> (GrantedAuthority) () -> role.getName())
+                .map(role -> (GrantedAuthority) role::getName)
                 .toList();
     }
+
 
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }

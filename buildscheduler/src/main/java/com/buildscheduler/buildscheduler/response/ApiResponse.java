@@ -1,23 +1,30 @@
 package com.buildscheduler.buildscheduler.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+@Getter
+@Setter
 public class ApiResponse<T> {
     private boolean success;
     private String message;
     private T data;
 
-    // Convenience static factory method
+    private ApiResponse(boolean success, String message, T data) {
+        this.success = success;
+        this.message = message;
+        this.data = data;
+    }
+
     public static <T> ApiResponse<T> ofSuccess(String message, T data) {
         return new ApiResponse<>(true, message, data);
     }
 
-    public static <T> ApiResponse<T> ofFailure(String message) {
+    public static <T> ApiResponse<T> ofSuccess(String message) {
+        return new ApiResponse<>(true, message, null);
+    }
+
+    public static <T> ApiResponse<T> ofError(String message) {
         return new ApiResponse<>(false, message, null);
     }
 }

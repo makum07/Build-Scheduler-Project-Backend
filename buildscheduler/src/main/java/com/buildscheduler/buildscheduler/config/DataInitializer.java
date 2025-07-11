@@ -1,4 +1,3 @@
-// DataInitializer.java
 package com.buildscheduler.buildscheduler.config;
 
 import com.buildscheduler.buildscheduler.dto.RoleDto;

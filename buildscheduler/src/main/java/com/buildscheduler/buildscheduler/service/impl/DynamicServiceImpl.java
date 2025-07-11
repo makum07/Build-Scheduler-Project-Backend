@@ -4,12 +4,10 @@ import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.mapper.Mapper;
 import com.buildscheduler.buildscheduler.service.base.BaseService;
 import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class DynamicServiceImpl<E, D, ID> implements BaseService<D, ID> {
-
     protected final JpaRepository<E, ID> repository;
     protected final Mapper<E, D> mapper;
 
@@ -18,26 +16,22 @@ public class DynamicServiceImpl<E, D, ID> implements BaseService<D, ID> {
         this.mapper = mapper;
     }
 
-    @Override
-    public D create(D dto) {
+    @Override public D create(D dto) {
         E entity = mapper.toEntity(dto);
         return mapper.toDto(repository.save(entity));
     }
 
-    @Override
-    public List<D> getAll() {
+    @Override public List<D> getAll() {
         return repository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }
 
-    @Override
-    public D getById(ID id) {
+    @Override public D getById(ID id) {
         return repository.findById(id)
                 .map(mapper::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Entity not found"));
     }
 
-    @Override
-    public D update(ID id, D dto) {
+    @Override public D update(ID id, D dto) {
         if (!repository.existsById(id)) {
             throw new ResourceNotFoundException("Entity not found");
         }
@@ -45,8 +39,7 @@ public class DynamicServiceImpl<E, D, ID> implements BaseService<D, ID> {
         return mapper.toDto(repository.save(entity));
     }
 
-    @Override
-    public void delete(ID id) {
+    @Override public void delete(ID id) {
         if (!repository.existsById(id)) {
             throw new ResourceNotFoundException("Entity not found");
         }
