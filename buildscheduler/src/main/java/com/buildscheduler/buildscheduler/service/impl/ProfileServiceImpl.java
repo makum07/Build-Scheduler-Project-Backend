@@ -10,6 +10,7 @@ import com.buildscheduler.buildscheduler.model.*;
 import com.buildscheduler.buildscheduler.repository.*;
 
 import com.buildscheduler.buildscheduler.service.custom.ProfileService;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,8 +45,9 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private User getCurrentUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByUsername(username)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User userDetails = (User) authentication.getPrincipal();
+        return userRepository.findByEmail(userDetails.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
@@ -59,12 +61,18 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public SkillDto addSkill(SkillDto dto) {
         User user = getCurrentUser();
-        Skill skill = skillRepository.findById(dto.getId())
-                .orElseGet(() -> {
-                    Skill newSkill = new Skill();
-                    newSkill.setName(dto.getName());
-                    return skillRepository.save(newSkill);
-                });
+        Skill skill;
+
+        if (dto.getId() == null) {
+            // Create new skill if ID is not provided
+            skill = new Skill();
+            skill.setName(dto.getName());
+            skill = skillRepository.save(skill);
+        } else {
+            // Use existing skill
+            skill = skillRepository.findById(dto.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Skill not found"));
+        }
 
         user.getSkills().add(skill);
         userRepository.save(user);
