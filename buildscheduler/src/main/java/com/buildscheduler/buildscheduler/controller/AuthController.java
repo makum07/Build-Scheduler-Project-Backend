@@ -2,13 +2,16 @@ package com.buildscheduler.buildscheduler.controller;
 
 import com.buildscheduler.buildscheduler.dto.JwtAuthRequest;
 import com.buildscheduler.buildscheduler.dto.JwtAuthResponse;
+import com.buildscheduler.buildscheduler.dto.RoleUpdateDto;
 import com.buildscheduler.buildscheduler.dto.UserDto;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.security.JwtTokenHelper;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -63,5 +66,23 @@ public class AuthController {
         );
     }
 
+    @PostMapping("/update-role")
+    @PreAuthorize("hasRole('PROJECT_MANAGER')")
+    public ResponseEntity<ApiResponse<UserDto>> updateUserRole(
+            @Valid @RequestBody RoleUpdateDto roleUpdateDto) {
+        UserDto updatedUser = userService.updateUserRole(roleUpdateDto);
+        return ResponseEntity.ok(
+                ApiResponse.ofSuccess("User role updated successfully", updatedUser)
+        );
+    }
+
+    @GetMapping("/user")
+    public ResponseEntity<ApiResponse<UserDto>> getUserByEmail(
+            @RequestParam @Email String email) {
+        UserDto user = userService.getUserByEmail(email);
+        return ResponseEntity.ok(
+                ApiResponse.ofSuccess("User retrieved successfully", user)
+        );
+    }
 
 }

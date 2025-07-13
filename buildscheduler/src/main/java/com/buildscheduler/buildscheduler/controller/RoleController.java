@@ -5,6 +5,7 @@ import com.buildscheduler.buildscheduler.mapper.RoleMapper;
 import com.buildscheduler.buildscheduler.repository.RoleRepository;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,6 +26,7 @@ public class RoleController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<ApiResponse<List<RoleDto>>> getAllRoles() {
         List<RoleDto> roles = roleRepository.findAll().stream()
                 .map(roleMapper::toDto)

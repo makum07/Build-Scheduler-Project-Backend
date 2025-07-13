@@ -1,6 +1,8 @@
 package com.buildscheduler.buildscheduler.service.impl;
 
+import com.buildscheduler.buildscheduler.dto.RoleUpdateDto;
 import com.buildscheduler.buildscheduler.dto.UserDto;
+import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.exception.RoleNotFoundException;
 import com.buildscheduler.buildscheduler.exception.UserAlreadyExistsException;
 import com.buildscheduler.buildscheduler.mapper.UserMapper;
@@ -9,6 +11,7 @@ import com.buildscheduler.buildscheduler.model.User;
 import com.buildscheduler.buildscheduler.repository.RoleRepository;
 import com.buildscheduler.buildscheduler.repository.UserRepository;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
+import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -47,14 +50,65 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.toEntity(userDto);
         user.setPassword(passwordEncoder.encode(userDto.getPassword()));
 
-        // Assign role
-        String roleName = "ROLE_" + userDto.getRole().toUpperCase().replace(" ", "_");
-        Role selectedRole = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new RoleNotFoundException("Invalid role: " + userDto.getRole()));
+        // Handle role assignment with default
+        String roleName = (userDto.getRole() == null || userDto.getRole().isBlank())
+                ? "Worker"  // Default role
+                : userDto.getRole();
+
+        String formattedRoleName = "ROLE_" + roleName.toUpperCase().replace(" ", "_");
+        Role selectedRole = roleRepository.findByName(formattedRoleName)
+                .orElseThrow(() -> new RoleNotFoundException("Invalid role: " + roleName));
 
         user.getRoles().add(selectedRole);
 
         User savedUser = userRepository.save(user);
         return userMapper.toDto(savedUser);
     }
+
+    @Override
+    @Transactional
+    public UserDto updateUserRole(RoleUpdateDto roleUpdateDto) {
+        User user = userRepository.findByEmail(roleUpdateDto.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found with email: " + roleUpdateDto.getEmail()
+                ));
+
+        // Standardize role input: uppercase and replace spaces
+        String standardizedRole = roleUpdateDto.getRole().toUpperCase().replace(" ", "_");
+        String roleName = "ROLE_" + standardizedRole;
+
+        // Find the new role
+        Role newRole = roleRepository.findByName(roleName)
+                .orElseThrow(() -> new RoleNotFoundException("Invalid role: " + roleUpdateDto.getRole()));
+
+        // Clear existing roles and add the new one
+        user.getRoles().clear();
+        user.getRoles().add(newRole);
+
+        User updatedUser = userRepository.save(user);
+
+        // Create DTO with standardized role
+        UserDto userDto = userMapper.toDto(updatedUser);
+        userDto.setRole(standardizedRole); // Set standardized role name
+
+        return userDto;
+    }
+
+    @Override
+    public UserDto getUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found with email: " + email
+                ));
+
+        UserDto dto = userMapper.toDto(user);
+
+        // Standardize the role format
+        if (dto.getRole() != null) {
+            dto.setRole(dto.getRole().toUpperCase().replace(" ", "_"));
+        }
+
+        return dto;
+    }
+
 }
