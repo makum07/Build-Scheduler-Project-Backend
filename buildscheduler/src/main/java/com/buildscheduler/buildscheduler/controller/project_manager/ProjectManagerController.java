@@ -2,12 +2,15 @@ package com.buildscheduler.buildscheduler.controller.project_manager;
 
 import com.buildscheduler.buildscheduler.dto.project_manager.RoleUpdateDto;
 import com.buildscheduler.buildscheduler.dto.auth.UserDto;
+import com.buildscheduler.buildscheduler.dto.project_manager.UserTableDto;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/pm")
@@ -25,4 +28,12 @@ public class ProjectManagerController {
         UserDto updatedUser = userService.updateUserRole(roleUpdateDto);
         return ResponseEntity.ok(ApiResponse.ofSuccess("User role updated successfully", updatedUser));
     }
+
+    @GetMapping("/users")
+    @PreAuthorize("hasRole('PROJECT_MANAGER')")
+    public ResponseEntity<ApiResponse<List<UserTableDto>>> getAllUsersForTable() {
+        List<UserTableDto> users = userService.getAllUsersSortedByCreationDate();
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Users retrieved successfully", users));
+    }
+
 }

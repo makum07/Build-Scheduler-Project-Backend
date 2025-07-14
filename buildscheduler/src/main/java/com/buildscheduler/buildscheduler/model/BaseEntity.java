@@ -23,5 +23,5 @@ public abstract class BaseEntity {
     private LocalDateTime updatedAt;
 
     @Column(nullable = true)
-    private boolean deleted = false;
+    private Boolean deleted = false;
 }

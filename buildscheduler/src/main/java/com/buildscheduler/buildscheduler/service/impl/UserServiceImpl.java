@@ -2,6 +2,7 @@ package com.buildscheduler.buildscheduler.service.impl;
 
 import com.buildscheduler.buildscheduler.dto.project_manager.RoleUpdateDto;
 import com.buildscheduler.buildscheduler.dto.auth.UserDto;
+import com.buildscheduler.buildscheduler.dto.project_manager.UserTableDto;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.exception.RoleNotFoundException;
 import com.buildscheduler.buildscheduler.exception.UserAlreadyExistsException;
@@ -12,8 +13,13 @@ import com.buildscheduler.buildscheduler.repository.RoleRepository;
 import com.buildscheduler.buildscheduler.repository.UserRepository;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -110,5 +116,15 @@ public class UserServiceImpl implements UserService {
 
         return dto;
     }
+
+    @Override
+    public List<UserTableDto> getAllUsersSortedByCreationDate() {
+        List<User> users = userRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+        return users.stream()
+                .map(userMapper::toUserTableDto)
+                .toList();
+    }
+
+
 
 }

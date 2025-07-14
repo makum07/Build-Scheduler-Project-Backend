@@ -16,7 +16,7 @@ import jakarta.validation.constraints.Pattern;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "users")
-public class User implements UserDetails {
+public class User extends BaseEntity implements UserDetails {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
