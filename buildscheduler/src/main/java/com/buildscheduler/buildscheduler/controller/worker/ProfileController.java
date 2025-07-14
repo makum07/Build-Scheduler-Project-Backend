@@ -1,23 +1,27 @@
-package com.buildscheduler.buildscheduler.controller;
+package com.buildscheduler.buildscheduler.controller.worker;
 
 import com.buildscheduler.buildscheduler.dto.*;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.service.custom.ProfileService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/profile")
+@RequestMapping("/api/worker/profile")
 public class ProfileController {
+
     private final ProfileService profileService;
 
     public ProfileController(ProfileService profileService) {
         this.profileService = profileService;
     }
+
+    // Add your @PreAuthorize checks for "WORKER" here if needed
 
     @PostMapping("/skills")
     public ResponseEntity<ApiResponse<SkillDto>> addSkill(@RequestBody SkillDto dto) {
