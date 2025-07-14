@@ -1,4 +1,4 @@
-package com.buildscheduler.buildscheduler.dto;
+package com.buildscheduler.buildscheduler.dto.worker;
 
 import lombok.Getter; import lombok.Setter;
 

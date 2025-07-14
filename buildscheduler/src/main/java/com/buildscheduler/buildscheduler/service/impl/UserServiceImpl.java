@@ -1,7 +1,7 @@
 package com.buildscheduler.buildscheduler.service.impl;
 
-import com.buildscheduler.buildscheduler.dto.RoleUpdateDto;
-import com.buildscheduler.buildscheduler.dto.UserDto;
+import com.buildscheduler.buildscheduler.dto.project_manager.RoleUpdateDto;
+import com.buildscheduler.buildscheduler.dto.auth.UserDto;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.exception.RoleNotFoundException;
 import com.buildscheduler.buildscheduler.exception.UserAlreadyExistsException;

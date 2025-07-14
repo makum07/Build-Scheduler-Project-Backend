@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.mapper;
 
-import com.buildscheduler.buildscheduler.dto.AssignmentDto;
+import com.buildscheduler.buildscheduler.dto.site_supervisor.AssignmentDto;
 import com.buildscheduler.buildscheduler.model.Assignment;
 import org.springframework.stereotype.Component;
 
@@ -13,8 +13,8 @@ public class AssignmentMapper implements Mapper<Assignment, AssignmentDto> {
         if (entity.getWorker() != null) {
             dto.setWorkerId(entity.getWorker().getId());
         }
-        if (entity.getTask() != null) {
-            dto.setTaskId(entity.getTask().getId());
+        if (entity.getMainTask() != null) {
+            dto.setTaskId(entity.getMainTask().getId());
         }
         dto.setStartTime(entity.getStartTime());
         dto.setEndTime(entity.getEndTime());

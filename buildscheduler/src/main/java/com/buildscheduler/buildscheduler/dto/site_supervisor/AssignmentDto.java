@@ -1,4 +1,4 @@
-package com.buildscheduler.buildscheduler.dto;
+package com.buildscheduler.buildscheduler.dto.site_supervisor;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;

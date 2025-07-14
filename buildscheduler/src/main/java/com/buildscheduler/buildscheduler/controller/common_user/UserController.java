@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.controller.common_user;
 
-import com.buildscheduler.buildscheduler.dto.UserDto;
+import com.buildscheduler.buildscheduler.dto.auth.UserDto;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
 import jakarta.validation.constraints.Email;

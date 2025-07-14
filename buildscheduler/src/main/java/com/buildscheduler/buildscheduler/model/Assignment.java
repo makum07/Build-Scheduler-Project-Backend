@@ -23,7 +23,7 @@ public class Assignment extends BaseEntity {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "task_id", nullable = false)
-    private Task task;
+    private MainTask mainTask;
 
     @Column(nullable = false)
     private LocalDateTime startTime;

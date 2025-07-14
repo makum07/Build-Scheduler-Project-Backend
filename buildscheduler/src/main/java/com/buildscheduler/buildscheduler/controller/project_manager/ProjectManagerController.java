@@ -1,7 +1,7 @@
 package com.buildscheduler.buildscheduler.controller.project_manager;
 
-import com.buildscheduler.buildscheduler.dto.RoleUpdateDto;
-import com.buildscheduler.buildscheduler.dto.UserDto;
+import com.buildscheduler.buildscheduler.dto.project_manager.RoleUpdateDto;
+import com.buildscheduler.buildscheduler.dto.auth.UserDto;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
 import jakarta.validation.Valid;
@@ -11,11 +11,11 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/pm")
-public class RoleAssignment {
+public class ProjectManagerController {
 
     private final UserService userService;
 
-    public RoleAssignment(UserService userService) {
+    public ProjectManagerController(UserService userService) {
         this.userService = userService;
     }
 

@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.mapper;
 
-import com.buildscheduler.buildscheduler.dto.SkillDto;
+import com.buildscheduler.buildscheduler.dto.worker.SkillDto;
 import com.buildscheduler.buildscheduler.model.Skill;
 import org.springframework.stereotype.Component;
 

@@ -1,4 +1,4 @@
-package com.buildscheduler.buildscheduler.dto;
+package com.buildscheduler.buildscheduler.dto.project_manager;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;

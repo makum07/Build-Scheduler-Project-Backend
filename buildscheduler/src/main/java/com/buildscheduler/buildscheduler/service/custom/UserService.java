@@ -1,7 +1,7 @@
 package com.buildscheduler.buildscheduler.service.custom;
 
-import com.buildscheduler.buildscheduler.dto.RoleUpdateDto;
-import com.buildscheduler.buildscheduler.dto.UserDto;
+import com.buildscheduler.buildscheduler.dto.project_manager.RoleUpdateDto;
+import com.buildscheduler.buildscheduler.dto.auth.UserDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 

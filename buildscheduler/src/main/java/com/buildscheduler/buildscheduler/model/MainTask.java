@@ -1,5 +1,6 @@
 package com.buildscheduler.buildscheduler.model;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,13 +13,19 @@ import java.util.Set;
 @Entity
 @Table(name = "tasks")
 @Getter @Setter @NoArgsConstructor
-public class Task extends BaseEntity {
-
-    @Column(nullable = false)
+public class MainTask extends BaseEntity {
+    @NotBlank
     private String title;
-
-    @Column(length = 1000)
+    @Column(length = 2000)
     private String description;
+//    @ManyToOne(optional = false)
+//    @JoinColumn(name = "project_id", nullable = false)
+//    private Project project;
+    @ManyToOne
+    @JoinColumn(name = "supervisor_id")
+    private User siteSupervisor;
+//    @OneToMany(mappedBy = "mainTask", cascade = CascadeType.ALL)
+//    private Set<Subtask> subtasks = new HashSet<>();
 
     @Column(nullable = false)
     private LocalDateTime startTime;
@@ -30,14 +37,7 @@ public class Task extends BaseEntity {
     @Column(nullable = false)
     private TaskStatus status = TaskStatus.PENDING;
 
-    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @JoinTable(name = "task_skills",
-            joinColumns = @JoinColumn(name = "task_id"),
-            inverseJoinColumns = @JoinColumn(name = "skill_id"))
-    private Set<Skill> requiredSkills = new HashSet<>();
 
-    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Assignment> assignments = new HashSet<>();
 
     public enum TaskStatus { PENDING, IN_PROGRESS, COMPLETED, CANCELLED }
 }

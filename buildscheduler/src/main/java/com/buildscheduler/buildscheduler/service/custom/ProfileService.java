@@ -1,7 +1,11 @@
 package com.buildscheduler.buildscheduler.service.custom;
 
 
-import com.buildscheduler.buildscheduler.dto.*;
+import com.buildscheduler.buildscheduler.dto.worker.AvailabilitySlotDto;
+import com.buildscheduler.buildscheduler.dto.worker.BulkAvailabilityDto;
+import com.buildscheduler.buildscheduler.dto.worker.ProfileDto;
+import com.buildscheduler.buildscheduler.dto.worker.SkillDto;
+
 import java.time.LocalDate;
 import java.util.List;
 

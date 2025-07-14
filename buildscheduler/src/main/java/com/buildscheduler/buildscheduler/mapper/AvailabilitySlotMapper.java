@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.mapper;
 
-import com.buildscheduler.buildscheduler.dto.AvailabilitySlotDto;
+import com.buildscheduler.buildscheduler.dto.worker.AvailabilitySlotDto;
 import com.buildscheduler.buildscheduler.model.AvailabilitySlot;
 import org.springframework.stereotype.Component;
 

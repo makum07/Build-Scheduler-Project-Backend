@@ -1,5 +1,6 @@
-package com.buildscheduler.buildscheduler.dto;
+package com.buildscheduler.buildscheduler.dto.project_manager;
 
+import com.buildscheduler.buildscheduler.dto.worker.SkillDto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter; import lombok.Setter;
 import java.time.LocalDateTime;

@@ -1,8 +1,7 @@
 package com.buildscheduler.buildscheduler.config;
 
-import com.buildscheduler.buildscheduler.dto.RoleDto;
+import com.buildscheduler.buildscheduler.dto.auth.RoleDto;
 import com.buildscheduler.buildscheduler.mapper.RoleMapper;
-import com.buildscheduler.buildscheduler.model.Role;
 import com.buildscheduler.buildscheduler.model.Skill;
 import com.buildscheduler.buildscheduler.repository.RoleRepository;
 import com.buildscheduler.buildscheduler.repository.SkillRepository;

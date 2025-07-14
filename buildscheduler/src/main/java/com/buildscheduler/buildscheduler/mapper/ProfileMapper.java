@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.mapper;
 
-import com.buildscheduler.buildscheduler.dto.ProfileDto;
+import com.buildscheduler.buildscheduler.dto.worker.ProfileDto;
 import com.buildscheduler.buildscheduler.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

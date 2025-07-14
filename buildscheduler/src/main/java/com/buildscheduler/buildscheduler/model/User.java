@@ -67,6 +67,22 @@ public class User implements UserDetails {
 
 
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "site_supervisor_id")
+    private User siteSupervisor;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_manager_id")
+    private User projectManager;
+
+    @OneToMany(mappedBy = "siteSupervisor", cascade = CascadeType.ALL)
+    private Set<User> workersSupervised = new HashSet<>();
+
+    @OneToMany(mappedBy = "projectManager", cascade = CascadeType.ALL)
+    private Set<User> teamMembers = new HashSet<>();
+
+
+
 
     // Required by UserDetails interface
     @Override

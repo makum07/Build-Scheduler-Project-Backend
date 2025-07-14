@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.service.impl;
 
-import com.buildscheduler.buildscheduler.dto.AssignmentDto;
+import com.buildscheduler.buildscheduler.dto.site_supervisor.AssignmentDto;
 import com.buildscheduler.buildscheduler.exception.ConflictException;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.mapper.AssignmentMapper;
@@ -10,7 +10,6 @@ import com.buildscheduler.buildscheduler.service.custom.AssignmentService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,18 +19,18 @@ public class AssignmentServiceImpl implements AssignmentService {
     private final AvailabilitySlotRepository slotRepository;
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
-    private final TaskRepository taskRepository;
+    private final MainTaskRepository mainTaskRepository;
     private final AssignmentMapper assignmentMapper;
 
     public AssignmentServiceImpl(AvailabilitySlotRepository slotRepository,
                                  AssignmentRepository assignmentRepository,
                                  UserRepository userRepository,
-                                 TaskRepository taskRepository,
+                                 MainTaskRepository mainTaskRepository,
                                  AssignmentMapper assignmentMapper) {
         this.slotRepository = slotRepository;
         this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
-        this.taskRepository = taskRepository;
+        this.mainTaskRepository = mainTaskRepository;
         this.assignmentMapper = assignmentMapper;
     }
 
@@ -40,7 +39,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         User worker = userRepository.findById(dto.getWorkerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Worker not found"));
 
-        Task task = taskRepository.findById(dto.getTaskId())
+        MainTask mainTask = mainTaskRepository.findById(dto.getTaskId())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
 
         // Check for assignment conflicts
@@ -78,7 +77,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         // Create and save assignment
         Assignment assignment = assignmentMapper.toEntity(dto);
         assignment.setWorker(worker);
-        assignment.setTask(task);
+        assignment.setMainTask(mainTask);
         return assignmentRepository.save(assignment);
     }
 

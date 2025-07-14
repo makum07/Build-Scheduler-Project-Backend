@@ -1,8 +1,8 @@
 package com.buildscheduler.buildscheduler.controller.auth;
 
-import com.buildscheduler.buildscheduler.dto.JwtAuthRequest;
-import com.buildscheduler.buildscheduler.dto.JwtAuthResponse;
-import com.buildscheduler.buildscheduler.dto.UserDto;
+import com.buildscheduler.buildscheduler.dto.auth.JwtAuthRequest;
+import com.buildscheduler.buildscheduler.dto.auth.JwtAuthResponse;
+import com.buildscheduler.buildscheduler.dto.auth.UserDto;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.security.JwtTokenHelper;
 import com.buildscheduler.buildscheduler.service.custom.UserService;

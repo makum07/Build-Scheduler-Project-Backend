@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.controller.site_supervisor;
 
-import com.buildscheduler.buildscheduler.dto.AssignmentDto;
+import com.buildscheduler.buildscheduler.dto.site_supervisor.AssignmentDto;
 import com.buildscheduler.buildscheduler.model.Assignment;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.service.custom.AssignmentService;

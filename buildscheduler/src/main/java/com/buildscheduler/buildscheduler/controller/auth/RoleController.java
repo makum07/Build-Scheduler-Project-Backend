@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.controller.auth;
 
-import com.buildscheduler.buildscheduler.dto.RoleDto;
+import com.buildscheduler.buildscheduler.dto.auth.RoleDto;
 import com.buildscheduler.buildscheduler.mapper.RoleMapper;
 import com.buildscheduler.buildscheduler.repository.RoleRepository;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
