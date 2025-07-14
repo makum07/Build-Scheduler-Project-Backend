@@ -61,24 +61,34 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public SkillDto addSkill(SkillDto dto) {
         User user = getCurrentUser();
+
         Skill skill;
 
+        // Handle case when skill already exists by name
         if (dto.getId() == null) {
-            // Create new skill if ID is not provided
-            skill = new Skill();
-            skill.setName(dto.getName());
-            skill = skillRepository.save(skill);
+            // Check if skill with same name already exists (case-insensitive)
+            skill = skillRepository.findByNameIgnoreCase(dto.getName())
+                    .orElseGet(() -> {
+                        Skill newSkill = new Skill();
+                        newSkill.setName(dto.getName());
+                        return skillRepository.save(newSkill);
+                    });
         } else {
-            // Use existing skill
+            // If skill ID is given, fetch it
             skill = skillRepository.findById(dto.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Skill not found"));
         }
 
-        user.getSkills().add(skill);
-        userRepository.save(user);
-        updateProfileStatus(user);
+        // Avoid duplicate skill assignment
+        if (!user.getSkills().contains(skill)) {
+            user.getSkills().add(skill);
+            userRepository.save(user);
+            updateProfileStatus(user);
+        }
+
         return skillMapper.toDto(skill);
     }
+
 
     @Override
     public void removeSkill(Long skillId) {

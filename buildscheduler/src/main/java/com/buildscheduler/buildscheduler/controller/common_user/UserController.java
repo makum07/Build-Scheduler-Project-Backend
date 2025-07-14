@@ -22,4 +22,5 @@ public class UserController {
         UserDto user = userService.getUserByEmail(email);
         return ResponseEntity.ok(ApiResponse.ofSuccess("User retrieved successfully", user));
     }
+
 }

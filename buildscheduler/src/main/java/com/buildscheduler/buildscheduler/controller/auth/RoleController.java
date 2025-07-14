@@ -26,12 +26,7 @@ public class RoleController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<RoleDto>>> getAllRoles() {
-        List<RoleDto> roles = roleRepository.findAll().stream()
-                .map(roleMapper::toDto)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(
-                ApiResponse.ofSuccess("Roles retrieved successfully", roles)
-        );
+        List<RoleDto> roles = roleRepository.findAll().stream().map(roleMapper::toDto).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Roles retrieved successfully", roles));
     }
 }
