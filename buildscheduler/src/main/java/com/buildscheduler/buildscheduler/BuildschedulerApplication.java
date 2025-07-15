@@ -10,5 +10,7 @@ public class BuildschedulerApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(BuildschedulerApplication.class, args);
+
+
 	}
 }
