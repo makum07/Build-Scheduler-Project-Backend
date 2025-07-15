@@ -1,6 +1,6 @@
 package com.buildscheduler.buildscheduler.mapper;
 
-import com.buildscheduler.buildscheduler.dto.RoleDto;
+import com.buildscheduler.buildscheduler.dto.auth.RoleDto;
 import com.buildscheduler.buildscheduler.model.Role;
 import org.springframework.stereotype.Component;
 

@@ -1,6 +1,7 @@
 package com.buildscheduler.buildscheduler.mapper;
 
-import com.buildscheduler.buildscheduler.dto.UserDto;
+import com.buildscheduler.buildscheduler.dto.auth.UserDto;
+import com.buildscheduler.buildscheduler.dto.project_manager.UserTableDto;
 import com.buildscheduler.buildscheduler.model.Role;
 import com.buildscheduler.buildscheduler.model.User;
 import org.springframework.stereotype.Component;
@@ -57,4 +58,20 @@ public class UserMapper implements Mapper<User, UserDto> {
 
         return titleCase.toString();
     }
+
+    public UserTableDto toUserTableDto(User user) {
+        String role = user.getRoles().stream()
+                .map(Role::getName)
+                .findFirst()
+                .orElse("UNKNOWN");
+
+        return new UserTableDto(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getPhone(),
+                role
+        );
+    }
+
 }

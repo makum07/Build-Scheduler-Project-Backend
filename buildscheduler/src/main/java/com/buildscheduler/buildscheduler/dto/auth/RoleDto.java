@@ -1,5 +1,5 @@
 // RoleDto.java
-package com.buildscheduler.buildscheduler.dto;
+package com.buildscheduler.buildscheduler.dto.auth;
 
 import lombok.Data;
 

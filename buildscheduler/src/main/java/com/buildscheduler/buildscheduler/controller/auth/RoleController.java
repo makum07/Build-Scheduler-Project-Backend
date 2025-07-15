@@ -1,6 +1,6 @@
-package com.buildscheduler.buildscheduler.controller;
+package com.buildscheduler.buildscheduler.controller.auth;
 
-import com.buildscheduler.buildscheduler.dto.RoleDto;
+import com.buildscheduler.buildscheduler.dto.auth.RoleDto;
 import com.buildscheduler.buildscheduler.mapper.RoleMapper;
 import com.buildscheduler.buildscheduler.repository.RoleRepository;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
@@ -26,12 +26,7 @@ public class RoleController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<RoleDto>>> getAllRoles() {
-        List<RoleDto> roles = roleRepository.findAll().stream()
-                .map(roleMapper::toDto)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(
-                ApiResponse.ofSuccess("Roles retrieved successfully", roles)
-        );
+        List<RoleDto> roles = roleRepository.findAll().stream().map(roleMapper::toDto).collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Roles retrieved successfully", roles));
     }
 }

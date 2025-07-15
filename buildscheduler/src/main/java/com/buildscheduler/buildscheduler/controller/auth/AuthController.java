@@ -1,8 +1,8 @@
-package com.buildscheduler.buildscheduler.controller;
+package com.buildscheduler.buildscheduler.controller.auth;
 
-import com.buildscheduler.buildscheduler.dto.JwtAuthRequest;
-import com.buildscheduler.buildscheduler.dto.JwtAuthResponse;
-import com.buildscheduler.buildscheduler.dto.UserDto;
+import com.buildscheduler.buildscheduler.dto.auth.JwtAuthRequest;
+import com.buildscheduler.buildscheduler.dto.auth.JwtAuthResponse;
+import com.buildscheduler.buildscheduler.dto.auth.UserDto;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.security.JwtTokenHelper;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
@@ -24,13 +24,8 @@ public class AuthController {
     private final UserDetailsService userDetailsService;
     private final UserService userService;
 
-    // Constructor injection
-    public AuthController(
-            AuthenticationManager authenticationManager,
-            JwtTokenHelper jwtTokenHelper,
-            UserDetailsService userDetailsService,
-            UserService userService
-    ) {
+    public AuthController(AuthenticationManager authenticationManager, JwtTokenHelper jwtTokenHelper,
+                          UserDetailsService userDetailsService, UserService userService) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenHelper = jwtTokenHelper;
         this.userDetailsService = userDetailsService;
@@ -40,28 +35,20 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<JwtAuthResponse>> login(@Valid @RequestBody JwtAuthRequest request) {
         this.authenticate(request.getEmail(), request.getPassword());
-        UserDetails userDetails = this.userDetailsService.loadUserByUsername(request.getEmail()); // uses email now
+        UserDetails userDetails = this.userDetailsService.loadUserByUsername(request.getEmail());
         String token = this.jwtTokenHelper.generateToken(userDetails);
-
         JwtAuthResponse response = new JwtAuthResponse();
         response.setToken(token);
         return ResponseEntity.ok(ApiResponse.ofSuccess("Login successful", response));
     }
 
     private void authenticate(String email, String password) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
-        );
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
     }
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserDto>> register(@Valid @RequestBody UserDto userDto) {
         UserDto registeredUser = userService.registerNewUser(userDto);
-        return new ResponseEntity<>(
-                ApiResponse.ofSuccess("User registered successfully", registeredUser),
-                HttpStatus.CREATED
-        );
+        return new ResponseEntity<>(ApiResponse.ofSuccess("User registered successfully", registeredUser), HttpStatus.CREATED);
     }
-
-
 }
