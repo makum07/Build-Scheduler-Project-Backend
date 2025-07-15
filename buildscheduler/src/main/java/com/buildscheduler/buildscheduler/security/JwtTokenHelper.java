@@ -22,16 +22,18 @@ public class JwtTokenHelper {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", userDetails.getAuthorities().iterator().next().getAuthority());
 
-        // Add custom claims for user details
-        if (userDetails instanceof User) {
-            User user = (User) userDetails;
+        if (userDetails instanceof User user) {
             claims.put("email", user.getEmail());
             claims.put("phone", user.getPhone());
             claims.put("userId", user.getId());
+            claims.put("username", user.getUsername()); // ✅ Add this line
+            return buildToken(claims, user.getEmail()); // Email remains the subject
         }
 
         return buildToken(claims, userDetails.getUsername());
     }
+
+
 
     public String getEmailFromToken(String token) {
         return extractClaim(token, claims -> claims.get("email", String.class));
@@ -82,8 +84,9 @@ public class JwtTokenHelper {
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {
-        final String username = getUsernameFromToken(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        final String tokenEmail = getUsernameFromToken(token);
+        String userEmail = ((User) userDetails).getEmail(); // Get email from User entity
+        return (tokenEmail.equals(userEmail)) && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {

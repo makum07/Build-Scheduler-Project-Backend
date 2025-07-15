@@ -1,4 +1,4 @@
-package com.buildscheduler.buildscheduler.dto;
+package com.buildscheduler.buildscheduler.dto.auth;
 
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -22,6 +22,6 @@ public class UserDto {
     @Pattern(regexp = "^\\+?[0-9\\s]{10,15}$", message = "Invalid phone number")
     private String phone;
 
-    @NotBlank(message = "Role is required")
+
     private String role;
 }
