@@ -8,6 +8,7 @@ import com.buildscheduler.buildscheduler.dto.worker.SkillDto;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 public interface ProfileService {
     SkillDto addSkill(SkillDto dto);
@@ -20,4 +21,8 @@ public interface ProfileService {
     List<AvailabilitySlotDto> getAvailabilitySlots(LocalDate start, LocalDate end);
     ProfileDto getUserProfile();
     List<SkillDto> getAllSkills();
+
+    List<SkillDto> getMySkills();
+
+    Set<String> getMyCertifications();
 }

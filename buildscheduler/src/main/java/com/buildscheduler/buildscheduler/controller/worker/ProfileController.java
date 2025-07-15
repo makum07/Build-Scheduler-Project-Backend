@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/worker/profile")
@@ -86,4 +87,16 @@ public class ProfileController {
         ProfileDto profile = profileService.getUserProfile();
         return ResponseEntity.ok(ApiResponse.ofSuccess("User profile retrieved", profile));
     }
+
+    @GetMapping("/my-skills")
+    public ResponseEntity<ApiResponse<List<SkillDto>>> getMySkills() {
+        List<SkillDto> skills = profileService.getMySkills();
+        return ResponseEntity.ok(ApiResponse.ofSuccess("User skills retrieved successfully", skills));
+    }
+    @GetMapping("/certifications")
+    public ResponseEntity<ApiResponse<Set<String>>> getMyCertifications() {
+        Set<String> certifications = profileService.getMyCertifications();
+        return ResponseEntity.ok(ApiResponse.ofSuccess("User certifications retrieved successfully", certifications));
+    }
+
 }

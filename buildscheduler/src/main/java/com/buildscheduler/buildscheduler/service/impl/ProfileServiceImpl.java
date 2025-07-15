@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -107,19 +108,11 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public void addCertification(String certification) {
         User user = getCurrentUser();
-        user.getCertifications().add(certification);
+        String clean = certification.replaceAll("^\"|\"$", ""); // removes leading/trailing quotes
+        user.getCertifications().add(clean);
         userRepository.save(user);
     }
 
-    @Override
-    public void removeCertification(String certification) {
-        User user = getCurrentUser();
-        boolean removed = user.getCertifications().remove(certification);
-        if (!removed) {
-            throw new ResourceNotFoundException("Certification not found");
-        }
-        userRepository.save(user);
-    }
 
     @Override
     public AvailabilitySlotDto addAvailabilitySlot(AvailabilitySlotDto dto) {
@@ -177,9 +170,21 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     public void removeAvailabilitySlot(Long id) {
-        slotRepository.deleteById(id);
-        updateProfileStatus(getCurrentUser());
+        User user = getCurrentUser();
+
+        AvailabilitySlot slotToRemove = slotRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Availability slot not found"));
+
+        // Remove from user's availabilitySlots set first (in-memory)
+        user.getAvailabilitySlots().removeIf(slot -> slot.getId().equals(id));
+
+        // Then delete from DB
+        slotRepository.delete(slotToRemove);
+
+        // Finally update profile status
+        updateProfileStatus(user);
     }
+
 
     @Override
     public List<AvailabilitySlotDto> getAvailabilitySlots(LocalDate start, LocalDate end) {
@@ -202,4 +207,32 @@ public class ProfileServiceImpl implements ProfileService {
                 .map(skillMapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<SkillDto> getMySkills() {
+        User user = getCurrentUser();
+        return user.getSkills().stream()
+                .map(skillMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Set<String> getMyCertifications() {
+        User user = getCurrentUser();
+        return user.getCertifications();
+    }
+
+    @Override
+    public void removeCertification(String certification) {
+        User user = getCurrentUser();
+        String clean = certification.replaceAll("^\"|\"$", "");
+        boolean removed = user.getCertifications().removeIf(c -> c.equalsIgnoreCase(clean));
+        if (!removed) {
+            throw new ResourceNotFoundException("Certification not found");
+        }
+        userRepository.save(user);
+    }
+
+
+
 }
