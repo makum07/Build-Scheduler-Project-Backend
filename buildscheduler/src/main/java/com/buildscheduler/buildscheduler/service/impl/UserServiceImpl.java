@@ -116,6 +116,22 @@ public class UserServiceImpl implements UserService {
 
         return dto;
     }
+    @Override
+    public UserDto getUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found with id: " + id
+                ));
+
+        UserDto dto = userMapper.toDto(user);
+
+        // Standardize the role format
+        if (dto.getRole() != null) {
+            dto.setRole(dto.getRole().toUpperCase().replace(" ", "_"));
+        }
+
+        return dto;
+    }
 
     @Override
     public List<UserTableDto> getAllUsersSortedByCreationDate() {
@@ -123,6 +139,11 @@ public class UserServiceImpl implements UserService {
         return users.stream()
                 .map(userMapper::toUserTableDto)
                 .toList();
+    }
+    @Override
+    public User getUserEntityById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
     }
 
 

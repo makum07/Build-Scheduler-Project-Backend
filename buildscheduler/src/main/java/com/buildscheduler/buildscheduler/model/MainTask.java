@@ -1,43 +1,76 @@
 package com.buildscheduler.buildscheduler.model;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import jakarta.persistence.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "tasks")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "main_tasks")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class MainTask extends BaseEntity {
     @NotBlank
+    @Column(nullable = false)
     private String title;
+
     @Column(length = 2000)
     private String description;
-//    @ManyToOne(optional = false)
-//    @JoinColumn(name = "project_id", nullable = false)
-//    private Project project;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
     @ManyToOne
     @JoinColumn(name = "supervisor_id")
     private User siteSupervisor;
-//    @OneToMany(mappedBy = "mainTask", cascade = CascadeType.ALL)
-//    private Set<Subtask> subtasks = new HashSet<>();
 
     @Column(nullable = false)
-    private LocalDateTime startTime;
+    private LocalDate plannedStartDate;
 
     @Column(nullable = false)
-    private LocalDateTime endTime;
+    private LocalDate plannedEndDate;
+
+    private LocalDate actualStartDate;
+    private LocalDate actualEndDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TaskStatus status = TaskStatus.PENDING;
+    private TaskStatus status = TaskStatus.PLANNED;
 
+    @Column(nullable = false)
+    private Integer priority = 1;
 
+    @Column(nullable = false)
+    private Integer estimatedHours = 0;
 
-    public enum TaskStatus { PENDING, IN_PROGRESS, COMPLETED, CANCELLED }
+    @Column(nullable = false)
+    private Integer actualHours = 0;
+
+    @OneToMany(mappedBy = "mainTask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<Subtask> subtasks = new HashSet<>();
+
+    // Helper methods
+    public double getCompletionPercentage() {
+        if (subtasks.isEmpty()) return 0.0;
+        return subtasks.stream()
+                .mapToDouble(Subtask::getCompletionPercentage)
+                .average()
+                .orElse(0.0);
+    }
+
+    public boolean isOverdue() {
+        return plannedEndDate.isBefore(LocalDate.now()) &&
+                status != TaskStatus.COMPLETED && status != TaskStatus.CANCELLED;
+    }
+
+    public enum TaskStatus {
+        PLANNED, IN_PROGRESS, ON_HOLD, COMPLETED, CANCELLED, DELAYED
+    }
 }

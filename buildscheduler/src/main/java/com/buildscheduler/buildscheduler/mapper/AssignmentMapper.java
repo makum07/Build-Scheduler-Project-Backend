@@ -10,17 +10,22 @@ public class AssignmentMapper implements Mapper<Assignment, AssignmentDto> {
     public AssignmentDto toDto(Assignment entity) {
         AssignmentDto dto = new AssignmentDto();
         dto.setId(entity.getId());
+
         if (entity.getWorker() != null) {
             dto.setWorkerId(entity.getWorker().getId());
         }
+
         if (entity.getMainTask() != null) {
             dto.setTaskId(entity.getMainTask().getId());
         }
+
         dto.setStartTime(entity.getStartTime());
         dto.setEndTime(entity.getEndTime());
+
         if (entity.getStatus() != null) {
             dto.setStatus(entity.getStatus().name());
         }
+
         return dto;
     }
 
@@ -30,9 +35,11 @@ public class AssignmentMapper implements Mapper<Assignment, AssignmentDto> {
         entity.setId(dto.getId());
         entity.setStartTime(dto.getStartTime());
         entity.setEndTime(dto.getEndTime());
+
         if (dto.getStatus() != null) {
             entity.setStatus(Assignment.AssignmentStatus.valueOf(dto.getStatus()));
         }
+
         return entity;
     }
 }

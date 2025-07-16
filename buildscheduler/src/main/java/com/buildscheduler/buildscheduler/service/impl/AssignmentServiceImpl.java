@@ -77,7 +77,7 @@ public class AssignmentServiceImpl implements AssignmentService {
         // Create and save assignment
         Assignment assignment = assignmentMapper.toEntity(dto);
         assignment.setWorker(worker);
-        assignment.setMainTask(mainTask);
+        assignment.setMainTask(mainTask); // Use setMainTask instead of setMainTask
         return assignmentRepository.save(assignment);
     }
 

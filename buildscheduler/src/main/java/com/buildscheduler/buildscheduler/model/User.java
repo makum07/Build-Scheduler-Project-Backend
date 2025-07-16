@@ -65,7 +65,9 @@ public class User extends BaseEntity implements UserDetails {
         return availabilitySlots.stream().anyMatch(slot -> slot.covers(start, end));
     }
 
-
+    // Assignments and relationships
+    @OneToMany(mappedBy = "worker", cascade = CascadeType.ALL)
+    private Set<Assignment> assignments = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_supervisor_id")
@@ -75,11 +77,23 @@ public class User extends BaseEntity implements UserDetails {
     @JoinColumn(name = "project_manager_id")
     private User projectManager;
 
-    @OneToMany(mappedBy = "siteSupervisor", cascade = CascadeType.ALL)
-    private Set<User> workersSupervised = new HashSet<>();
+    // Inverse relationships for hierarchy
+    @OneToMany(mappedBy = "siteSupervisor", fetch = FetchType.LAZY)
+    private Set<User> supervisedWorkers = new HashSet<>();
 
-    @OneToMany(mappedBy = "projectManager", cascade = CascadeType.ALL)
-    private Set<User> teamMembers = new HashSet<>();
+    @OneToMany(mappedBy = "projectManager", fetch = FetchType.LAZY)
+    private Set<User> managedTeam = new HashSet<>();
+
+    // Projects relationships
+    @OneToMany(mappedBy = "projectManager", fetch = FetchType.LAZY)
+    private Set<Project> managedProjects = new HashSet<>();
+
+    @OneToMany(mappedBy = "siteSupervisor", fetch = FetchType.LAZY)
+    private Set<MainTask> supervisedTasks = new HashSet<>();
+
+    // Equipment management
+    @OneToMany(mappedBy = "equipmentManager", fetch = FetchType.LAZY)
+    private Set<Equipment> managedEquipment = new HashSet<>();
 
 
 
