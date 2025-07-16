@@ -57,6 +57,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true) // Add this annotation
     public ProjectResponseDto getProjectById(Long id) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", id));
@@ -64,6 +65,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true) // Add this annotation
     public Page<ProjectResponseDto> getProjectsByManager(User manager, Pageable pageable) {
         return projectRepository.findByProjectManager(manager, pageable)
                 .map(this::mapEntityToDto);
@@ -103,7 +105,7 @@ public class ProjectServiceImpl implements ProjectService {
         List<MainTask> mainTasks = mainTaskRepository.findByProject(project);
 
         ProjectStructureResponse response = new ProjectStructureResponse();
-        response.setProject(mapEntityToDto(project));
+        response.setProject(mapEntityToDto(project)); // ✅ No mainTasks in DTO
         response.setMainTasks(mainTasks.stream()
                 .map(this::mapMainTaskToDto)
                 .collect(Collectors.toList()));
@@ -137,10 +139,9 @@ public class ProjectServiceImpl implements ProjectService {
         dto.setActualBudget(entity.getActualBudget());
         dto.setLocation(entity.getLocation());
         dto.setPriority(entity.getPriority());
-        dto.setCompletionPercentage(entity.getCompletionPercentage());
-        dto.setOverdue(entity.isOverdue());
+//        dto.setCompletionPercentage(entity.getCompletionPercentage());
+//        dto.setOverdue(entity.isOverdue());
 
-        // ✅ Corrected: Map to DTOs
         if (entity.getSiteSupervisor() != null) {
             dto.setSiteSupervisor(userMapper.toSimpleUserDto(entity.getSiteSupervisor()));
         }
@@ -151,6 +152,63 @@ public class ProjectServiceImpl implements ProjectService {
 
         return dto;
     }
+
+//    private MainTaskResponseDto mapMainTaskToDto(MainTask entity) {
+//        MainTaskResponseDto dto = new MainTaskResponseDto();
+//        dto.setId(entity.getId());
+//        dto.setTitle(entity.getTitle());
+//        dto.setDescription(entity.getDescription());
+//        dto.setProjectId(entity.getProject().getId());
+//
+//        if (entity.getSiteSupervisor() != null) {
+//            dto.setSupervisorId(entity.getSiteSupervisor().getId());
+//            dto.setSupervisorName(entity.getSiteSupervisor().getUsername());
+//        }
+//
+//        dto.setPlannedStartDate(entity.getPlannedStartDate());
+//        dto.setPlannedEndDate(entity.getPlannedEndDate());
+//        dto.setActualStartDate(entity.getActualStartDate());
+//        dto.setActualEndDate(entity.getActualEndDate());
+//        dto.setStatus(entity.getStatus());
+//        dto.setPriority(entity.getPriority());
+//        dto.setEstimatedHours(entity.getEstimatedHours());
+//        dto.setActualHours(entity.getActualHours());
+//        dto.setCompletionPercentage(entity.getCompletionPercentage());
+//        dto.setOverdue(entity.isOverdue());
+//        return dto;
+//    }
+
+//    private ProjectResponseDto mapEntityToDto(Project entity) {
+//        ProjectResponseDto dto = new ProjectResponseDto();
+//        dto.setId(entity.getId());
+//        dto.setTitle(entity.getTitle());
+//        dto.setDescription(entity.getDescription());
+//        dto.setProjectManagerId(entity.getProjectManager().getId());
+//        dto.setProjectManagerName(entity.getProjectManager().getUsername());
+//        dto.setStartDate(entity.getStartDate());
+//        dto.setEndDate(entity.getEndDate());
+//        dto.setActualStartDate(entity.getActualStartDate());
+//        dto.setActualEndDate(entity.getActualEndDate());
+//        dto.setStatus(entity.getStatus());
+//        dto.setEstimatedBudget(entity.getEstimatedBudget());
+//        dto.setActualBudget(entity.getActualBudget());
+//        dto.setLocation(entity.getLocation());
+//        dto.setPriority(entity.getPriority());
+//
+//        // Removed problematic calculations
+//        // dto.setCompletionPercentage(entity.getCompletionPercentage());
+//        // dto.setOverdue(entity.isOverdue());
+//
+//        if (entity.getSiteSupervisor() != null) {
+//            dto.setSiteSupervisor(userMapper.toSimpleUserDto(entity.getSiteSupervisor()));
+//        }
+//
+//        if (entity.getEquipmentManager() != null) {
+//            dto.setEquipmentManager(userMapper.toSimpleUserDto(entity.getEquipmentManager()));
+//        }
+//
+//        return dto;
+//    }
 
     private MainTaskResponseDto mapMainTaskToDto(MainTask entity) {
         MainTaskResponseDto dto = new MainTaskResponseDto();
@@ -172,25 +230,13 @@ public class ProjectServiceImpl implements ProjectService {
         dto.setPriority(entity.getPriority());
         dto.setEstimatedHours(entity.getEstimatedHours());
         dto.setActualHours(entity.getActualHours());
-        dto.setCompletionPercentage(entity.getCompletionPercentage());
-        dto.setOverdue(entity.isOverdue());
-        return dto;
-    }
 
-    private ProjectAssignmentDto mapAssignmentToDto(ProjectAssignment entity) {
-        ProjectAssignmentDto dto = new ProjectAssignmentDto();
-        dto.setId(entity.getId());
-        dto.setAssignmentRole(entity.getAssignmentRole());
-        dto.setAssignedAt(entity.getAssignedAt());
-        dto.setIsActive(entity.isActive());
-
-        dto.setUserId(entity.getUser().getId());
-        dto.setUserName(entity.getUser().getUsername());
-        dto.setUserEmail(entity.getUser().getEmail());
-
-        dto.setAssignedById(entity.getAssignedBy().getId());
-        dto.setAssignedByName(entity.getAssignedBy().getUsername());
+        // Removed problematic calculations
+        // dto.setCompletionPercentage(entity.getCompletionPercentage());
+        // dto.setOverdue(entity.isOverdue());
 
         return dto;
     }
+
+
 }

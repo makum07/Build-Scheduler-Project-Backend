@@ -1,5 +1,6 @@
 package com.buildscheduler.buildscheduler.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -78,20 +79,23 @@ public class User extends BaseEntity implements UserDetails {
     private User projectManager;
 
     // Inverse relationships for hierarchy
+    @JsonIgnore
     @OneToMany(mappedBy = "siteSupervisor", fetch = FetchType.LAZY)
     private Set<User> supervisedWorkers = new HashSet<>();
-
+    @JsonIgnore
     @OneToMany(mappedBy = "projectManager", fetch = FetchType.LAZY)
     private Set<User> managedTeam = new HashSet<>();
 
     // Projects relationships
+    @JsonIgnore
     @OneToMany(mappedBy = "projectManager", fetch = FetchType.LAZY)
     private Set<Project> managedProjects = new HashSet<>();
-
+    @JsonIgnore
     @OneToMany(mappedBy = "siteSupervisor", fetch = FetchType.LAZY)
     private Set<MainTask> supervisedTasks = new HashSet<>();
 
     // Equipment management
+    @JsonIgnore
     @OneToMany(mappedBy = "equipmentManager", fetch = FetchType.LAZY)
     private Set<Equipment> managedEquipment = new HashSet<>();
 

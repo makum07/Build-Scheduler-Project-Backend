@@ -1,5 +1,6 @@
 package com.buildscheduler.buildscheduler.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -59,9 +60,10 @@ public class Project extends BaseEntity {
     private Integer priority = 1; // 1=Low, 2=Medium, 3=High, 4=Critical
 
     // Relationships
+    @JsonIgnore
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<MainTask> mainTasks = new HashSet<>();
-
+    @JsonIgnore
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<ProjectAssignment> projectAssignments = new HashSet<>();
 
