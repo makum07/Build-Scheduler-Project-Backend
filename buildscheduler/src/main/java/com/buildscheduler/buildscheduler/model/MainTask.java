@@ -56,19 +56,19 @@ public class MainTask extends BaseEntity {
     @OneToMany(mappedBy = "mainTask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Subtask> subtasks = new HashSet<>();
 
-    // Helper methods
-    public double getCompletionPercentage() {
-        if (subtasks.isEmpty()) return 0.0;
-        return subtasks.stream()
-                .mapToDouble(Subtask::getCompletionPercentage)
-                .average()
-                .orElse(0.0);
-    }
-
-    public boolean isOverdue() {
-        return plannedEndDate.isBefore(LocalDate.now()) &&
-                status != TaskStatus.COMPLETED && status != TaskStatus.CANCELLED;
-    }
+//    // Helper methods
+//    public double getCompletionPercentage() {
+//        if (subtasks.isEmpty()) return 0.0;
+//        return subtasks.stream()
+//                .mapToDouble(Subtask::getCompletionPercentage)
+//                .average()
+//                .orElse(0.0);
+//    }
+//
+//    public boolean isOverdue() {
+//        return plannedEndDate.isBefore(LocalDate.now()) &&
+//                status != TaskStatus.COMPLETED && status != TaskStatus.CANCELLED;
+//    }
 
     public enum TaskStatus {
         PLANNED, IN_PROGRESS, ON_HOLD, COMPLETED, CANCELLED, DELAYED

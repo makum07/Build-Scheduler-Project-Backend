@@ -110,8 +110,7 @@ public class MainTaskServiceImpl implements MainTaskService {
         dto.setPriority(entity.getPriority());
         dto.setEstimatedHours(entity.getEstimatedHours());
         dto.setActualHours(entity.getActualHours());
-        dto.setCompletionPercentage(entity.getCompletionPercentage());
-        dto.setOverdue(entity.isOverdue());
+
         return dto;
     }
 }

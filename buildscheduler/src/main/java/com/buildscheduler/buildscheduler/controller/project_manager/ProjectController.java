@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -90,10 +91,11 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}/structure")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SITE_SUPERVISOR')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SITE_SUPERVISOR', 'EQUIPMENT_MANAGER')")
+    @Transactional(readOnly = true) // Add transaction support
     public ResponseEntity<ApiResponse<ProjectStructureResponse>> getProjectStructure(@PathVariable Long id) {
-        ProjectStructureResponse structure = projectService.getProjectStructure(id);
-        return ResponseEntity.ok(ApiResponse.ofSuccess("Project structure fetched successfully", structure));
+        ProjectStructureResponse projectStructure = projectService.getProjectStructure(id);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Project structure fetched successfully", projectStructure));
     }
 
     @GetMapping("/supervisors")

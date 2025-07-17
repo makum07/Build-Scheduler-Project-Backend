@@ -24,9 +24,9 @@ public class ProjectResponseDto {
     private String location;
     private Integer priority;
 
-    // Removed problematic fields
-    // private double completionPercentage;
-    // private boolean overdue;
+
+     private double completionPercentage;
+     private boolean overdue;
 
     private SimpleUserDto siteSupervisor;
     private SimpleUserDto equipmentManager;

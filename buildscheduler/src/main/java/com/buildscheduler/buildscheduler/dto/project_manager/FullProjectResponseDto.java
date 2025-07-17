@@ -22,9 +22,9 @@ public class FullProjectResponseDto {
     private String location;
     private Integer priority;
 
-    // Removed problematic fields
-    // private double completionPercentage;
-    // private boolean overdue;
+    // Add these fields:
+    private double completionPercentage;
+    private boolean overdue;
 
     private SimpleUserDto projectManager;
     private SimpleUserDto siteSupervisor;

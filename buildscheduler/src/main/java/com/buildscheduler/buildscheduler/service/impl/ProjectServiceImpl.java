@@ -15,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,18 +59,22 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    @Transactional(readOnly = true) // Add this annotation
+    @Transactional(readOnly = true)
     public ProjectResponseDto getProjectById(Long id) {
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", id));
-        return mapEntityToDto(project);
+        List<MainTask> mainTasks = mainTaskRepository.findByProject(project);
+        return mapEntityToDto(project, mainTasks);
     }
 
     @Override
-    @Transactional(readOnly = true) // Add this annotation
+    @Transactional(readOnly = true)
     public Page<ProjectResponseDto> getProjectsByManager(User manager, Pageable pageable) {
         return projectRepository.findByProjectManager(manager, pageable)
-                .map(this::mapEntityToDto);
+                .map(project -> {
+                    List<MainTask> mainTasks = mainTaskRepository.findByProject(project);
+                    return mapEntityToDto(project, mainTasks);
+                });
     }
 
     @Override
@@ -98,32 +104,73 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ProjectStructureResponse getProjectStructure(Long id) {
-        Project project = projectRepository.findById(id)
+        Project project = projectRepository.findByIdWithTasksAndSubtasks(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", id));
 
-        List<MainTask> mainTasks = mainTaskRepository.findByProject(project);
+        FullProjectResponseDto projectDto = mapToFullProjectDto(project);
 
-        ProjectStructureResponse response = new ProjectStructureResponse();
-        response.setProject(mapEntityToDto(project)); // ✅ No mainTasks in DTO
-        response.setMainTasks(mainTasks.stream()
+        // Calculate project completion and overdue status
+        projectDto.setCompletionPercentage(calculateProjectCompletion(project));
+        projectDto.setOverdue(isProjectOverdue(project));
+
+        // Map main tasks with their completion percentages
+        List<MainTaskResponseDto> mainTaskDtos = project.getMainTasks().stream()
                 .map(this::mapMainTaskToDto)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
 
-        return response;
+        return new ProjectStructureResponse(projectDto, mainTaskDtos);
     }
 
-    private void mapDtoToEntity(ProjectRequestDto dto, Project entity) {
-        entity.setTitle(dto.getTitle());
-        entity.setDescription(dto.getDescription());
-        entity.setStartDate(dto.getStartDate());
-        entity.setEndDate(dto.getEndDate());
-        entity.setEstimatedBudget(dto.getEstimatedBudget());
-        entity.setLocation(dto.getLocation());
-        entity.setPriority(dto.getPriority());
+    private double calculateProjectCompletion(Project project) {
+        if (project.getMainTasks().isEmpty()) return 0.0;
+
+        double totalCompletion = project.getMainTasks().stream()
+                .mapToDouble(this::calculateMainTaskCompletion)
+                .average()
+                .orElse(0.0);
+
+        return Math.round(totalCompletion * 100.0) / 100.0;
     }
 
-    private ProjectResponseDto mapEntityToDto(Project entity) {
+    private double calculateMainTaskCompletion(MainTask mainTask) {
+        if (mainTask.getSubtasks().isEmpty()) return 0.0;
+
+        double totalCompletion = mainTask.getSubtasks().stream()
+                .mapToDouble(this::calculateSubtaskCompletion)
+                .average()
+                .orElse(0.0);
+
+        return Math.round(totalCompletion * 100.0) / 100.0;
+    }
+
+    private double calculateSubtaskCompletion(Subtask subtask) {
+        switch (subtask.getStatus()) {
+            case COMPLETED: return 100.0;
+            case IN_PROGRESS: return 50.0;
+            case ASSIGNED: return 25.0;
+            case ON_HOLD: return 10.0;
+            case DELAYED: return 5.0;
+            default: return 0.0;
+        }
+    }
+
+    private boolean isProjectOverdue(Project project) {
+        return project.getEndDate() != null &&
+                project.getEndDate().isBefore(LocalDate.now()) &&
+                project.getStatus() != Project.ProjectStatus.COMPLETED &&
+                project.getStatus() != Project.ProjectStatus.CANCELLED;
+    }
+
+    private boolean isMainTaskOverdue(MainTask mainTask) {
+        return mainTask.getPlannedEndDate() != null &&
+                mainTask.getPlannedEndDate().isBefore(LocalDate.now()) &&
+                mainTask.getStatus() != MainTask.TaskStatus.COMPLETED &&
+                mainTask.getStatus() != MainTask.TaskStatus.CANCELLED;
+    }
+
+    private ProjectResponseDto mapEntityToDto(Project entity, List<MainTask> mainTasks) {
         ProjectResponseDto dto = new ProjectResponseDto();
         dto.setId(entity.getId());
         dto.setTitle(entity.getTitle());
@@ -139,8 +186,6 @@ public class ProjectServiceImpl implements ProjectService {
         dto.setActualBudget(entity.getActualBudget());
         dto.setLocation(entity.getLocation());
         dto.setPriority(entity.getPriority());
-//        dto.setCompletionPercentage(entity.getCompletionPercentage());
-//        dto.setOverdue(entity.isOverdue());
 
         if (entity.getSiteSupervisor() != null) {
             dto.setSiteSupervisor(userMapper.toSimpleUserDto(entity.getSiteSupervisor()));
@@ -150,65 +195,24 @@ public class ProjectServiceImpl implements ProjectService {
             dto.setEquipmentManager(userMapper.toSimpleUserDto(entity.getEquipmentManager()));
         }
 
+        // Include completionPercentage and overdue
+        double completion = 0.0;
+        if (!mainTasks.isEmpty()) {
+            completion = mainTasks.stream()
+                    .mapToDouble(this::calculateMainTaskCompletion)
+                    .average()
+                    .orElse(0.0);
+        }
+        dto.setCompletionPercentage(Math.round(completion * 100.0) / 100.0);
+        dto.setOverdue(isProjectOverdue(entity));
+
         return dto;
     }
 
-//    private MainTaskResponseDto mapMainTaskToDto(MainTask entity) {
-//        MainTaskResponseDto dto = new MainTaskResponseDto();
-//        dto.setId(entity.getId());
-//        dto.setTitle(entity.getTitle());
-//        dto.setDescription(entity.getDescription());
-//        dto.setProjectId(entity.getProject().getId());
-//
-//        if (entity.getSiteSupervisor() != null) {
-//            dto.setSupervisorId(entity.getSiteSupervisor().getId());
-//            dto.setSupervisorName(entity.getSiteSupervisor().getUsername());
-//        }
-//
-//        dto.setPlannedStartDate(entity.getPlannedStartDate());
-//        dto.setPlannedEndDate(entity.getPlannedEndDate());
-//        dto.setActualStartDate(entity.getActualStartDate());
-//        dto.setActualEndDate(entity.getActualEndDate());
-//        dto.setStatus(entity.getStatus());
-//        dto.setPriority(entity.getPriority());
-//        dto.setEstimatedHours(entity.getEstimatedHours());
-//        dto.setActualHours(entity.getActualHours());
-//        dto.setCompletionPercentage(entity.getCompletionPercentage());
-//        dto.setOverdue(entity.isOverdue());
-//        return dto;
-//    }
-
-//    private ProjectResponseDto mapEntityToDto(Project entity) {
-//        ProjectResponseDto dto = new ProjectResponseDto();
-//        dto.setId(entity.getId());
-//        dto.setTitle(entity.getTitle());
-//        dto.setDescription(entity.getDescription());
-//        dto.setProjectManagerId(entity.getProjectManager().getId());
-//        dto.setProjectManagerName(entity.getProjectManager().getUsername());
-//        dto.setStartDate(entity.getStartDate());
-//        dto.setEndDate(entity.getEndDate());
-//        dto.setActualStartDate(entity.getActualStartDate());
-//        dto.setActualEndDate(entity.getActualEndDate());
-//        dto.setStatus(entity.getStatus());
-//        dto.setEstimatedBudget(entity.getEstimatedBudget());
-//        dto.setActualBudget(entity.getActualBudget());
-//        dto.setLocation(entity.getLocation());
-//        dto.setPriority(entity.getPriority());
-//
-//        // Removed problematic calculations
-//        // dto.setCompletionPercentage(entity.getCompletionPercentage());
-//        // dto.setOverdue(entity.isOverdue());
-//
-//        if (entity.getSiteSupervisor() != null) {
-//            dto.setSiteSupervisor(userMapper.toSimpleUserDto(entity.getSiteSupervisor()));
-//        }
-//
-//        if (entity.getEquipmentManager() != null) {
-//            dto.setEquipmentManager(userMapper.toSimpleUserDto(entity.getEquipmentManager()));
-//        }
-//
-//        return dto;
-//    }
+    private ProjectResponseDto mapEntityToDto(Project entity) {
+        // Fallback mapper (no main task data)
+        return mapEntityToDto(entity, List.of());
+    }
 
     private MainTaskResponseDto mapMainTaskToDto(MainTask entity) {
         MainTaskResponseDto dto = new MainTaskResponseDto();
@@ -230,13 +234,49 @@ public class ProjectServiceImpl implements ProjectService {
         dto.setPriority(entity.getPriority());
         dto.setEstimatedHours(entity.getEstimatedHours());
         dto.setActualHours(entity.getActualHours());
-
-        // Removed problematic calculations
-        // dto.setCompletionPercentage(entity.getCompletionPercentage());
-        // dto.setOverdue(entity.isOverdue());
+        dto.setCompletionPercentage(calculateMainTaskCompletion(entity));
+        dto.setOverdue(isMainTaskOverdue(entity));
 
         return dto;
     }
 
+    private FullProjectResponseDto mapToFullProjectDto(Project entity) {
+        FullProjectResponseDto dto = new FullProjectResponseDto();
+        dto.setId(entity.getId());
+        dto.setTitle(entity.getTitle());
+        dto.setDescription(entity.getDescription());
+        dto.setStartDate(entity.getStartDate());
+        dto.setEndDate(entity.getEndDate());
+        dto.setActualStartDate(entity.getActualStartDate());
+        dto.setActualEndDate(entity.getActualEndDate());
+        dto.setStatus(entity.getStatus());
+        dto.setEstimatedBudget(entity.getEstimatedBudget());
+        dto.setActualBudget(entity.getActualBudget());
+        dto.setLocation(entity.getLocation());
+        dto.setPriority(entity.getPriority());
+        dto.setCompletionPercentage(0.0);
+        dto.setOverdue(false);
 
+        if (entity.getProjectManager() != null) {
+            dto.setProjectManager(userMapper.toSimpleUserDto(entity.getProjectManager()));
+        }
+        if (entity.getSiteSupervisor() != null) {
+            dto.setSiteSupervisor(userMapper.toSimpleUserDto(entity.getSiteSupervisor()));
+        }
+        if (entity.getEquipmentManager() != null) {
+            dto.setEquipmentManager(userMapper.toSimpleUserDto(entity.getEquipmentManager()));
+        }
+
+        return dto;
+    }
+
+    private void mapDtoToEntity(ProjectRequestDto dto, Project entity) {
+        entity.setTitle(dto.getTitle());
+        entity.setDescription(dto.getDescription());
+        entity.setStartDate(dto.getStartDate());
+        entity.setEndDate(dto.getEndDate());
+        entity.setEstimatedBudget(dto.getEstimatedBudget());
+        entity.setLocation(dto.getLocation());
+        entity.setPriority(dto.getPriority());
+    }
 }
