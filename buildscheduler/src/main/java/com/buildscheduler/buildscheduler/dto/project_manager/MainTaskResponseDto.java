@@ -1,8 +1,11 @@
 package com.buildscheduler.buildscheduler.dto.project_manager;
 
 import com.buildscheduler.buildscheduler.model.MainTask.TaskStatus;
+
 import lombok.Data;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 public class MainTaskResponseDto {
@@ -20,8 +23,6 @@ public class MainTaskResponseDto {
     private Integer priority;
     private Integer estimatedHours;
     private Integer actualHours;
-    private double completionPercentage;
-    private boolean overdue;
-
-
+    private double completionPercentage;  // Added
+    private boolean overdue;              // Added
 }

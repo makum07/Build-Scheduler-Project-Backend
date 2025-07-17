@@ -66,19 +66,7 @@ public class Subtask extends BaseEntity {
 //    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 //    private Set<EquipmentRequest> equipmentRequests = new HashSet<>();
 
-    // Helper methods
-//    public double getCompletionPercentage() {
-//        if (assignments.isEmpty()) return 0.0;
-//        long completedAssignments = assignments.stream()
-//                .filter(a -> a.getStatus() == Assignment.AssignmentStatus.COMPLETED)
-//                .count();
-//        return (double) completedAssignments / assignments.size() * 100;
-//    }
-//
-//    public boolean isOverdue() {
-//        return plannedEndTime.isBefore(LocalDateTime.now()) &&
-//                status != TaskStatus.COMPLETED && status != TaskStatus.CANCELLED;
-//    }
+
 
     public boolean hasRequiredSkills(Set<Skill> workerSkills) {
         return workerSkills.containsAll(requiredSkills);

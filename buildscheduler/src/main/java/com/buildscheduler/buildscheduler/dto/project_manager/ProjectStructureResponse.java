@@ -8,7 +8,7 @@ import java.util.List;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor  // Add this annotation
+@AllArgsConstructor
 public class ProjectStructureResponse {
     private FullProjectResponseDto project;
     private List<MainTaskResponseDto> mainTasks;

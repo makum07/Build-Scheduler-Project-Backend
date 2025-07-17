@@ -16,5 +16,5 @@ public interface ProjectService {
     Page<ProjectResponseDto> getProjectsByManager(User manager, Pageable pageable);
     void assignSupervisor(Long projectId, Long supervisorId);
     void assignEquipmentManager(Long projectId, Long equipmentManagerId);
-    ProjectStructureResponse getProjectStructure(Long id);
+
 }

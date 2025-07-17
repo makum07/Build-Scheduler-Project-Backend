@@ -21,11 +21,8 @@ public class FullProjectResponseDto {
     private BigDecimal actualBudget;
     private String location;
     private Integer priority;
-
-    // Add these fields:
-    private double completionPercentage;
-    private boolean overdue;
-
+    private double completionPercentage;  // Added
+    private boolean overdue;             // Added
     private SimpleUserDto projectManager;
     private SimpleUserDto siteSupervisor;
     private SimpleUserDto equipmentManager;

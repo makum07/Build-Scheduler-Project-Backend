@@ -67,19 +67,7 @@ public class Project extends BaseEntity {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<ProjectAssignment> projectAssignments = new HashSet<>();
 
-//    // Helper methods
-//    public double getCompletionPercentage() {
-//        if (mainTasks.isEmpty()) return 0.0;
-//        return mainTasks.stream()
-//                .mapToDouble(MainTask::getCompletionPercentage)
-//                .average()
-//                .orElse(0.0);
-//    }
-//
-//    public boolean isOverdue() {
-//        return endDate != null && endDate.isBefore(LocalDate.now()) &&
-//                status != ProjectStatus.COMPLETED && status != ProjectStatus.CANCELLED;
-//    }
+
 
     public enum ProjectStatus {
         PLANNING, APPROVED, IN_PROGRESS, ON_HOLD, COMPLETED, CANCELLED, DELAYED

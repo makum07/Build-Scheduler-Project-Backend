@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
+
 @Getter @Setter
 public abstract class BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

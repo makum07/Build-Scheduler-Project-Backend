@@ -43,9 +43,7 @@ public class UserMapper implements Mapper<User, UserDto> {
     }
 
     private String toTitleCase(String input) {
-        if (input == null || input.isEmpty()) {
-            return input;
-        }
+        if (input == null || input.isEmpty()) return input;
 
         StringBuilder titleCase = new StringBuilder();
         boolean convertNext = true;
@@ -94,7 +92,6 @@ public class UserMapper implements Mapper<User, UserDto> {
         dto.setPhone(user.getPhone());
         dto.setProfileStatus(user.getProfileStatus());
 
-        // Role
         String role = user.getRoles().stream()
                 .map(Role::getName)
                 .map(r -> r.replace("ROLE_", "").replace("_", " ").toUpperCase())
@@ -102,27 +99,21 @@ public class UserMapper implements Mapper<User, UserDto> {
                 .orElse("UNKNOWN");
         dto.setRole(role);
 
-        // Skills
-        List<SkillDto> skillDtos = user.getSkills().stream()
+        dto.setSkills(user.getSkills().stream()
                 .map(skill -> new SkillDto(skill.getId(), skill.getName()))
-                .collect(Collectors.toList());
-        dto.setSkills(skillDtos);
+                .collect(Collectors.toList()));
 
-        // Certifications
         dto.setCertifications(user.getCertifications());
 
-        // Availability slots
-        List<AvailabilitySlotDto> availabilityDtos = user.getAvailabilitySlots().stream()
+        dto.setAvailabilitySlots(user.getAvailabilitySlots().stream()
                 .map(slot -> new AvailabilitySlotDto(
                         slot.getId(),
                         slot.getDate(),
                         slot.getStartTime(),
                         slot.getEndTime()
                 ))
-                .collect(Collectors.toList());
-        dto.setAvailabilitySlots(availabilityDtos);
+                .collect(Collectors.toList()));
 
-        // Supervisor & Manager
         if (user.getSiteSupervisor() != null) {
             dto.setSiteSupervisor(new SimpleUserDto(
                     user.getSiteSupervisor().getId(),
@@ -139,8 +130,7 @@ public class UserMapper implements Mapper<User, UserDto> {
             ));
         }
 
-        // Assignments (simplified)
-        List<AssignmentDto> assignments = user.getAssignments().stream()
+        dto.setAssignments(user.getAssignments().stream()
                 .map(a -> new AssignmentDto(
                         a.getId(),
                         a.getMainTask().getId(),
@@ -149,19 +139,13 @@ public class UserMapper implements Mapper<User, UserDto> {
                         a.getEndTime(),
                         a.getStatus() != null ? a.getStatus().name() : "UNKNOWN"
                 ))
-                .collect(Collectors.toList());
-        dto.setAssignments(assignments);
+                .collect(Collectors.toList()));
 
         return dto;
     }
+
     public SimpleUserDto toSimpleUserDto(User user) {
         if (user == null) return null;
-
-        SimpleUserDto dto = new SimpleUserDto();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
-        return dto;
+        return new SimpleUserDto(user.getId(), user.getUsername(), user.getEmail());
     }
-
 }

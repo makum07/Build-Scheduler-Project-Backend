@@ -10,6 +10,7 @@ import com.buildscheduler.buildscheduler.repository.UserRepository;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.security.CustomUserDetailsService;
 import com.buildscheduler.buildscheduler.service.custom.ProjectService;
+import com.buildscheduler.buildscheduler.service.impl.ProjectStructureService;  // <-- import your dedicated service
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ import java.util.List;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProjectStructureService projectStructureService;  // <-- injected
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final CustomUserDetailsService userDetailsService;
@@ -36,6 +38,7 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<ProjectResponseDto>> createProject(
             @RequestBody ProjectRequestDto dto,
             @AuthenticationPrincipal User currentUser) {
+
         ProjectResponseDto response = projectService.createProject(dto, currentUser);
         return ResponseEntity.ok(ApiResponse.ofSuccess("Project created successfully", response));
     }
@@ -45,6 +48,7 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<Page<ProjectResponseDto>>> getProjectsByManager(
             @AuthenticationPrincipal User currentUser,
             Pageable pageable) {
+
         Page<ProjectResponseDto> projects = projectService.getProjectsByManager(currentUser, pageable);
         return ResponseEntity.ok(ApiResponse.ofSuccess("Projects fetched successfully", projects));
     }
@@ -61,6 +65,7 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<ProjectResponseDto>> updateProject(
             @PathVariable Long id,
             @RequestBody ProjectRequestDto dto) {
+
         ProjectResponseDto updatedProject = projectService.updateProject(id, dto);
         return ResponseEntity.ok(ApiResponse.ofSuccess("Project updated successfully", updatedProject));
     }
@@ -77,6 +82,7 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<Void>> assignSupervisor(
             @PathVariable Long projectId,
             @RequestParam Long supervisorId) {
+
         projectService.assignSupervisor(projectId, supervisorId);
         return ResponseEntity.ok(ApiResponse.ofSuccess("Supervisor assigned successfully", null));
     }
@@ -86,29 +92,32 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<Void>> assignEquipmentManager(
             @PathVariable Long projectId,
             @RequestParam Long equipmentManagerId) {
+
         projectService.assignEquipmentManager(projectId, equipmentManagerId);
         return ResponseEntity.ok(ApiResponse.ofSuccess("Equipment Manager assigned successfully", null));
     }
 
     @GetMapping("/{id}/structure")
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SITE_SUPERVISOR', 'EQUIPMENT_MANAGER')")
-    @Transactional(readOnly = true) // Add transaction support
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<ProjectStructureResponse>> getProjectStructure(@PathVariable Long id) {
-        ProjectStructureResponse projectStructure = projectService.getProjectStructure(id);
-        return ResponseEntity.ok(ApiResponse.ofSuccess("Project structure fetched successfully", projectStructure));
+        ProjectStructureResponse structure = projectStructureService.getProjectStructure(id);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Project structure fetched successfully", structure));
     }
 
     @GetMapping("/supervisors")
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
     public ResponseEntity<ApiResponse<List<UserTableDto>>> getSupervisors() {
         List<User> supervisors = userRepository.findByRoles_Name("SITE_SUPERVISOR");
-        return ResponseEntity.ok(ApiResponse.ofSuccess("Supervisors fetched successfully", userMapper.toUserTableDtos(supervisors)));
+        List<UserTableDto> dtos = userMapper.toUserTableDtos(supervisors);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Supervisors fetched successfully", dtos));
     }
 
     @GetMapping("/equipment-managers")
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
     public ResponseEntity<ApiResponse<List<UserTableDto>>> getEquipmentManagers() {
         List<User> equipmentManagers = userRepository.findByRoles_Name("EQUIPMENT_MANAGER");
-        return ResponseEntity.ok(ApiResponse.ofSuccess("Equipment Managers fetched successfully", userMapper.toUserTableDtos(equipmentManagers)));
+        List<UserTableDto> dtos = userMapper.toUserTableDtos(equipmentManagers);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Equipment Managers fetched successfully", dtos));
     }
 }
