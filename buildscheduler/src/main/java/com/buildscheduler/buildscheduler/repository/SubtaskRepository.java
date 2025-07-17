@@ -1,0 +1,10 @@
+package com.buildscheduler.buildscheduler.repository;
+
+import com.buildscheduler.buildscheduler.model.Subtask;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface SubtaskRepository extends JpaRepository<Subtask, Long> {
+    List<Subtask> findByMainTaskIdIn(List<Long> mainTaskIds);
+}

@@ -7,6 +7,7 @@ import com.buildscheduler.buildscheduler.model.*;
 import com.buildscheduler.buildscheduler.repository.MainTaskRepository;
 import com.buildscheduler.buildscheduler.repository.ProjectRepository;
 import com.buildscheduler.buildscheduler.repository.UserRepository;
+import com.buildscheduler.buildscheduler.repository.SubtaskRepository;
 import com.buildscheduler.buildscheduler.service.custom.MainTaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,7 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +26,7 @@ public class MainTaskServiceImpl implements MainTaskService {
     private final MainTaskRepository mainTaskRepository;
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final SubtaskRepository subtaskRepository;
 
     @Override
     @Transactional
@@ -44,7 +47,7 @@ public class MainTaskServiceImpl implements MainTaskService {
         mainTask.setStatus(MainTask.TaskStatus.PLANNED);
         mainTask = mainTaskRepository.save(mainTask);
 
-        return mapEntityToDto(mainTask);
+        return mapEntityToDto(mainTask, Collections.emptyList());
     }
 
     @Override
@@ -63,7 +66,7 @@ public class MainTaskServiceImpl implements MainTaskService {
 
         mapDtoToEntity(dto, mainTask);
         mainTask = mainTaskRepository.save(mainTask);
-        return mapEntityToDto(mainTask);
+        return mapEntityToDto(mainTask, Collections.emptyList());
     }
 
     @Override
@@ -73,7 +76,6 @@ public class MainTaskServiceImpl implements MainTaskService {
                 .orElseThrow(() -> new ResourceNotFoundException("MainTask", "id", id));
         mainTaskRepository.delete(mainTask);
     }
-
 
     private void mapDtoToEntity(MainTaskRequestDto dto, MainTask entity) {
         entity.setTitle(dto.getTitle());
@@ -85,23 +87,35 @@ public class MainTaskServiceImpl implements MainTaskService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<MainTaskResponseDto> getMainTasksByProject(Long projectId, Pageable pageable) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", projectId));
-        return mainTaskRepository.findByProject(project, pageable)
-                .map(this::mapEntityToDto);
+
+        Page<MainTask> page = mainTaskRepository.findByProject(project, pageable);
+
+        List<Long> mainTaskIds = page.getContent().stream().map(MainTask::getId).toList();
+        Map<Long, List<Subtask>> subtasksMap = subtaskRepository.findByMainTaskIdIn(mainTaskIds).stream()
+                .collect(Collectors.groupingBy(sub -> sub.getMainTask().getId()));
+
+        return page.map(mainTask -> {
+            List<Subtask> subtasks = subtasksMap.getOrDefault(mainTask.getId(), Collections.emptyList());
+            return mapEntityToDto(mainTask, subtasks);
+        });
     }
 
-    private MainTaskResponseDto mapEntityToDto(MainTask entity) {
+    private MainTaskResponseDto mapEntityToDto(MainTask entity, List<Subtask> subtasks) {
         MainTaskResponseDto dto = new MainTaskResponseDto();
         dto.setId(entity.getId());
         dto.setTitle(entity.getTitle());
         dto.setDescription(entity.getDescription());
         dto.setProjectId(entity.getProject().getId());
+
         if (entity.getSiteSupervisor() != null) {
             dto.setSupervisorId(entity.getSiteSupervisor().getId());
             dto.setSupervisorName(entity.getSiteSupervisor().getUsername());
         }
+
         dto.setPlannedStartDate(entity.getPlannedStartDate());
         dto.setPlannedEndDate(entity.getPlannedEndDate());
         dto.setActualStartDate(entity.getActualStartDate());
@@ -111,6 +125,49 @@ public class MainTaskServiceImpl implements MainTaskService {
         dto.setEstimatedHours(entity.getEstimatedHours());
         dto.setActualHours(entity.getActualHours());
 
+        dto.setCompletionPercentage(roundToTwoDecimalPlaces(calculateMainTaskCompletion(subtasks, entity)));
+        dto.setOverdue(isMainTaskOverdue(entity));
+
         return dto;
+    }
+
+    private double calculateMainTaskCompletion(List<Subtask> subtasks, MainTask mainTask) {
+        if (subtasks == null || subtasks.isEmpty()) {
+            return switch (mainTask.getStatus()) {
+                case COMPLETED -> 100.0;
+                case IN_PROGRESS -> 50.0;
+                case ON_HOLD -> 10.0;
+                case DELAYED -> 5.0;
+                default -> 0.0;
+            };
+        }
+
+        return subtasks.stream()
+                .mapToDouble(this::calculateSubtaskCompletion)
+                .average()
+                .orElse(0.0);
+    }
+
+    private double calculateSubtaskCompletion(Subtask subtask) {
+        if (subtask == null || subtask.getStatus() == null) return 0.0;
+
+        return switch (subtask.getStatus()) {
+            case COMPLETED -> 100.0;
+            case IN_PROGRESS -> 50.0;
+            case ASSIGNED -> 25.0;
+            case ON_HOLD -> 10.0;
+            case DELAYED -> 5.0;
+            default -> 0.0;
+        };
+    }
+
+    private boolean isMainTaskOverdue(MainTask mainTask) {
+        if (mainTask == null || mainTask.getStatus() == MainTask.TaskStatus.COMPLETED) return false;
+        LocalDate today = LocalDate.now();
+        return mainTask.getPlannedEndDate() != null && mainTask.getPlannedEndDate().isBefore(today);
+    }
+
+    private double roundToTwoDecimalPlaces(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 }
