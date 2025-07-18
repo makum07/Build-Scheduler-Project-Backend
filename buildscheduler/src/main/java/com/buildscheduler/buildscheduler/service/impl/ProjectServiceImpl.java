@@ -15,6 +15,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class ProjectServiceImpl implements ProjectService {
@@ -63,8 +68,48 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional(readOnly = true)
     public Page<ProjectResponseDto> getProjectsByManager(User manager, Pageable pageable) {
-        return projectRepository.findByProjectManager(manager, pageable)
-                .map(this::mapEntityToDto);
+        Page<Project> projectPage = projectRepository.findByProjectManager(manager, pageable);
+        List<Project> projects = projectPage.getContent();
+
+        if (projects.isEmpty()) {
+            return projectPage.map(this::mapEntityToDto);
+        }
+
+        List<Long> projectIds = projects.stream()
+                .map(Project::getId)
+                .toList();
+
+        // Get completion stats
+        List<Object[]> stats = projectRepository.getProjectCompletionStats(projectIds);
+        Map<Long, Double> completionMap = new HashMap<>();
+        for (Object[] stat : stats) {
+            Long projectId = (Long) stat[0];
+            Long totalSubtasks = (Long) stat[1];
+            Long completedSubtasks = (Long) stat[2];
+            double completion = totalSubtasks == 0 ? 0.0 : (completedSubtasks * 100.0) / totalSubtasks;
+            completionMap.put(projectId, completion);
+        }
+
+        return projectPage.map(project -> {
+            ProjectResponseDto dto = mapEntityToDto(project);
+            dto.setCompletionPercentage(roundToTwoDecimalPlaces(
+                    completionMap.getOrDefault(project.getId(), 0.0)
+            ));
+            dto.setOverdue(isProjectOverdue(project));
+            return dto;
+        });
+    }
+
+    private boolean isProjectOverdue(Project project) {
+        if (project.getStatus() == Project.ProjectStatus.COMPLETED) {
+            return false;
+        }
+        LocalDate today = LocalDate.now();
+        return project.getEndDate() != null && project.getEndDate().isBefore(today);
+    }
+
+    private double roundToTwoDecimalPlaces(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     @Override

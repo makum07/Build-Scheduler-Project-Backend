@@ -74,7 +74,11 @@ public class MainTaskServiceImpl implements MainTaskService {
     public void deleteMainTask(Long id) {
         MainTask mainTask = mainTaskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MainTask", "id", id));
-        mainTaskRepository.delete(mainTask);
+        // Delete subtasks first
+        subtaskRepository.deleteByMainTaskId(id);
+
+        // Then delete main task
+        mainTaskRepository.deleteById(id);
     }
 
     private void mapDtoToEntity(MainTaskRequestDto dto, MainTask entity) {

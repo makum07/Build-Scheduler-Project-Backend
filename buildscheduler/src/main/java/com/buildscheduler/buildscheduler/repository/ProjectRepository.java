@@ -16,6 +16,15 @@ import java.util.Optional;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
+    @Query("SELECT p.id, " +
+            "COUNT(st.id) AS totalSubtasks, " +
+            "SUM(CASE WHEN st.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedSubtasks " +
+            "FROM Project p " +
+            "LEFT JOIN p.mainTasks mt " +
+            "LEFT JOIN mt.subtasks st " +
+            "WHERE p.id IN :projectIds " +
+            "GROUP BY p.id")
+    List<Object[]> getProjectCompletionStats(@Param("projectIds") List<Long> projectIds);
 
     Page<Project> findByProjectManager(User manager, Pageable pageable);
 
