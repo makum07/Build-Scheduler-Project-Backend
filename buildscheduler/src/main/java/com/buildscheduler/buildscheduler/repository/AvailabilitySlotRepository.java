@@ -34,4 +34,5 @@ public interface AvailabilitySlotRepository extends JpaRepository<AvailabilitySl
     );
 
     List<AvailabilitySlot> findByUser(User user);
+
 }

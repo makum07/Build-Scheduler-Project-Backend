@@ -184,6 +184,14 @@ public class ProfileServiceImpl implements ProfileService {
         // Finally update profile status
         updateProfileStatus(user);
     }
+    @Override
+    public List<AvailabilitySlotDto> getAllAvailabilitySlots() {
+        User user = getCurrentUser();
+        List<AvailabilitySlot> slots = slotRepository.findByUser(user);
+        return slots.stream()
+                .map(slotMapper::toDto)
+                .collect(Collectors.toList());
+    }
 
 
     @Override

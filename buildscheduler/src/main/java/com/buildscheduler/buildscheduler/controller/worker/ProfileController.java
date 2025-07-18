@@ -98,5 +98,11 @@ public class ProfileController {
         Set<String> certifications = profileService.getMyCertifications();
         return ResponseEntity.ok(ApiResponse.ofSuccess("User certifications retrieved successfully", certifications));
     }
+    @GetMapping("/availability/all")
+    public ResponseEntity<ApiResponse<List<AvailabilitySlotDto>>> getAllAvailabilitySlots() {
+        List<AvailabilitySlotDto> slots = profileService.getAllAvailabilitySlots();
+        return ResponseEntity.ok(ApiResponse.ofSuccess("All availability slots retrieved", slots));
+    }
+
 
 }

@@ -25,4 +25,6 @@ public interface ProfileService {
     List<SkillDto> getMySkills();
 
     Set<String> getMyCertifications();
+
+    List<AvailabilitySlotDto> getAllAvailabilitySlots();
 }
