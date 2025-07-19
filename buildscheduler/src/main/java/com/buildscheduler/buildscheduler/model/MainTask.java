@@ -31,14 +31,16 @@ public class MainTask extends BaseEntity {
     @JoinColumn(name = "supervisor_id")
     private User siteSupervisor;
 
+    @ManyToOne
+    @JoinColumn(name = "equipment_manager_id")
+    private User equipmentManager;
+
     @Column(nullable = false)
     private LocalDate plannedStartDate;
 
     @Column(nullable = false)
     private LocalDate plannedEndDate;
 
-    private LocalDate actualStartDate;
-    private LocalDate actualEndDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -50,13 +52,9 @@ public class MainTask extends BaseEntity {
     @Column(nullable = false)
     private Integer estimatedHours = 0;
 
-    @Column(nullable = false)
-    private Integer actualHours = 0;
 
     @OneToMany(mappedBy = "mainTask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Subtask> subtasks = new HashSet<>();
-
-
 
     public enum TaskStatus {
         PLANNED, IN_PROGRESS, ON_HOLD, COMPLETED, CANCELLED, DELAYED

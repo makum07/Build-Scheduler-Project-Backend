@@ -113,6 +113,10 @@ public class User extends BaseEntity implements UserDetails {
     @BatchSize(size = 25)
     private Set<Equipment> managedEquipment = new HashSet<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Set<Notification> notifications = new HashSet<>();
+
+
     // Required by Spring Security
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

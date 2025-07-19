@@ -122,12 +122,11 @@ public class MainTaskServiceImpl implements MainTaskService {
 
         dto.setPlannedStartDate(entity.getPlannedStartDate());
         dto.setPlannedEndDate(entity.getPlannedEndDate());
-        dto.setActualStartDate(entity.getActualStartDate());
-        dto.setActualEndDate(entity.getActualEndDate());
+
         dto.setStatus(entity.getStatus());
         dto.setPriority(entity.getPriority());
         dto.setEstimatedHours(entity.getEstimatedHours());
-        dto.setActualHours(entity.getActualHours());
+
 
         dto.setCompletionPercentage(roundToTwoDecimalPlaces(calculateMainTaskCompletion(subtasks, entity)));
         dto.setOverdue(isMainTaskOverdue(entity));

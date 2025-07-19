@@ -26,9 +26,6 @@ public class EquipmentAssignment extends BaseEntity {
     private User assignedBy;
 
     @Column(nullable = false)
-    private LocalDateTime assignedAt = LocalDateTime.now();
-
-    @Column(nullable = false)
     private LocalDateTime startTime;
 
     @Column(nullable = false)

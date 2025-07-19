@@ -45,8 +45,6 @@ public class Equipment extends BaseEntity {
     @Column(precision = 10, scale = 2)
     private BigDecimal purchasePrice;
 
-    @Column(precision = 10, scale = 2)
-    private BigDecimal currentValue;
 
     @Column(nullable = false)
     private Integer warrantyMonths = 12;
@@ -63,23 +61,25 @@ public class Equipment extends BaseEntity {
     private String notes;
 
     // Relationships
-//    @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//    private Set<MaintenanceSchedule> maintenanceSchedules = new HashSet<>();
+    @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<MaintenanceSchedule> maintenanceSchedules = new HashSet<>();
 
     @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<EquipmentAssignment> assignments = new HashSet<>();
 
-//    @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//    private Set<EquipmentRequest> requests = new HashSet<>();
+    @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<EquipmentRequest> requests = new HashSet<>();
 
     // Helper methods
-//    public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
-//        return status == EquipmentStatus.AVAILABLE &&
-//                maintenanceSchedules.stream()
-//                        .noneMatch(schedule -> schedule.overlapsWith(start, end)) &&
-//                assignments.stream()
-//                        .noneMatch(assignment -> assignment.overlapsWith(start, end));
-//    }
+    public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
+        return status == EquipmentStatus.AVAILABLE &&
+                maintenanceSchedules.stream()
+                        .noneMatch(schedule -> schedule.overlapsWith(start, end)) &&
+                assignments.stream()
+                        .noneMatch(assignment -> assignment.overlapsWith(start, end));
+    }
+
+    private Boolean maintenanceDueAlert = false;
 
     public boolean isMaintenanceDue() {
         return nextMaintenanceDate != null &&

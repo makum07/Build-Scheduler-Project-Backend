@@ -14,6 +14,11 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Subtask extends BaseEntity {
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
     @NotBlank
     @Column(nullable = false)
     private String title;
@@ -60,8 +65,8 @@ public class Subtask extends BaseEntity {
     @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<EquipmentAssignment> equipmentAssignments = new HashSet<>();
 
-//    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//    private Set<EquipmentRequest> equipmentRequests = new HashSet<>();
+    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<EquipmentRequest> equipmentRequests = new HashSet<>();
 
     public boolean isOverdue() {
         return plannedEndTime.isBefore(LocalDateTime.now()) &&

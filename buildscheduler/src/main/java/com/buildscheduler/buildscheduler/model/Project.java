@@ -17,6 +17,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Project extends BaseEntity {
+
     @NotBlank
     @Column(nullable = false)
     private String title;
@@ -28,6 +29,15 @@ public class Project extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "equipment_manager_id")
     private User equipmentManager;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "project_workers",
+            joinColumns = @JoinColumn(name = "project_id"),
+            inverseJoinColumns = @JoinColumn(name = "worker_id")
+    )
+    private Set<User> workers = new HashSet<>();
+
 
     @Column(length = 2000)
     private String description;
@@ -41,18 +51,12 @@ public class Project extends BaseEntity {
 
     private LocalDate endDate;
 
-    private LocalDate actualStartDate;
-    private LocalDate actualEndDate;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProjectStatus status = ProjectStatus.PLANNING;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal estimatedBudget;
-
-    @Column(precision = 10, scale = 2)
-    private BigDecimal actualBudget;
 
     private String location;
 
@@ -63,9 +67,6 @@ public class Project extends BaseEntity {
     @JsonIgnore
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<MainTask> mainTasks = new HashSet<>();
-
-
-
 
     public enum ProjectStatus {
         PLANNING, APPROVED, IN_PROGRESS, ON_HOLD, COMPLETED, CANCELLED, DELAYED
