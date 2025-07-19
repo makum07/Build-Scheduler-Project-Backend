@@ -6,8 +6,8 @@ import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.model.*;
 import com.buildscheduler.buildscheduler.repository.MainTaskRepository;
 import com.buildscheduler.buildscheduler.repository.ProjectRepository;
-import com.buildscheduler.buildscheduler.repository.UserRepository;
 import com.buildscheduler.buildscheduler.repository.SubtaskRepository;
+import com.buildscheduler.buildscheduler.repository.UserRepository;
 import com.buildscheduler.buildscheduler.service.custom.MainTaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -40,10 +40,17 @@ public class MainTaskServiceImpl implements MainTaskService {
                     .orElseThrow(() -> new ResourceNotFoundException("User", "id", dto.getSupervisorId()));
         }
 
+        User equipmentManager = null;
+        if (dto.getEquipmentManagerId() != null) {
+            equipmentManager = userRepository.findById(dto.getEquipmentManagerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", dto.getEquipmentManagerId()));
+        }
+
         MainTask mainTask = new MainTask();
         mapDtoToEntity(dto, mainTask);
         mainTask.setProject(project);
         mainTask.setSiteSupervisor(supervisor);
+        mainTask.setEquipmentManager(equipmentManager);
         mainTask.setStatus(MainTask.TaskStatus.PLANNED);
         mainTask = mainTaskRepository.save(mainTask);
 
@@ -64,6 +71,14 @@ public class MainTaskServiceImpl implements MainTaskService {
             mainTask.setSiteSupervisor(null);
         }
 
+        if (dto.getEquipmentManagerId() != null) {
+            User equipmentManager = userRepository.findById(dto.getEquipmentManagerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", dto.getEquipmentManagerId()));
+            mainTask.setEquipmentManager(equipmentManager);
+        } else {
+            mainTask.setEquipmentManager(null);
+        }
+
         mapDtoToEntity(dto, mainTask);
         mainTask = mainTaskRepository.save(mainTask);
         return mapEntityToDto(mainTask, Collections.emptyList());
@@ -74,10 +89,7 @@ public class MainTaskServiceImpl implements MainTaskService {
     public void deleteMainTask(Long id) {
         MainTask mainTask = mainTaskRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("MainTask", "id", id));
-        // Delete subtasks first
         subtaskRepository.deleteByMainTaskId(id);
-
-        // Then delete main task
         mainTaskRepository.deleteById(id);
     }
 
@@ -120,13 +132,17 @@ public class MainTaskServiceImpl implements MainTaskService {
             dto.setSupervisorName(entity.getSiteSupervisor().getUsername());
         }
 
+        if (entity.getEquipmentManager() != null) {
+            dto.setEquipmentManagerId(entity.getEquipmentManager().getId());
+            dto.setEquipmentManagerName(entity.getEquipmentManager().getUsername());
+        }
+
         dto.setPlannedStartDate(entity.getPlannedStartDate());
         dto.setPlannedEndDate(entity.getPlannedEndDate());
 
         dto.setStatus(entity.getStatus());
         dto.setPriority(entity.getPriority());
         dto.setEstimatedHours(entity.getEstimatedHours());
-
 
         dto.setCompletionPercentage(roundToTwoDecimalPlaces(calculateMainTaskCompletion(subtasks, entity)));
         dto.setOverdue(isMainTaskOverdue(entity));

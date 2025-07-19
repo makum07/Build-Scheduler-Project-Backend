@@ -16,11 +16,9 @@ public class ProjectMapper {
         dto.setDescription(project.getDescription());
         dto.setStartDate(project.getStartDate());
         dto.setEndDate(project.getEndDate());
-        dto.setActualStartDate(project.getActualStartDate());
-        dto.setActualEndDate(project.getActualEndDate());
         dto.setStatus(project.getStatus());
         dto.setEstimatedBudget(project.getEstimatedBudget());
-        dto.setActualBudget(project.getActualBudget());
+
         dto.setLocation(project.getLocation());
         dto.setPriority(project.getPriority());
 

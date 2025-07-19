@@ -14,4 +14,6 @@ public class MainTaskRequestDto {
     @Min(1) @Max(4) private Integer priority = 1;
     @Min(0) private Integer estimatedHours = 0;
     private Long supervisorId;
+    private Long equipmentManagerId;
+
 }

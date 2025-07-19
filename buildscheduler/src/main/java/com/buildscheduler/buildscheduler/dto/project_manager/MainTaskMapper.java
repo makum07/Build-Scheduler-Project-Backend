@@ -21,12 +21,9 @@ public class MainTaskMapper {
         dto.setProjectId(mainTask.getProject() != null ? mainTask.getProject().getId() : null);
         dto.setPlannedStartDate(mainTask.getPlannedStartDate());
         dto.setPlannedEndDate(mainTask.getPlannedEndDate());
-        dto.setActualStartDate(mainTask.getActualStartDate());
-        dto.setActualEndDate(mainTask.getActualEndDate());
         dto.setStatus(mainTask.getStatus());
         dto.setPriority(mainTask.getPriority());
         dto.setEstimatedHours(mainTask.getEstimatedHours());
-        dto.setActualHours(mainTask.getActualHours());
 
         // Map supervisor info
         if (mainTask.getSiteSupervisor() != null) {

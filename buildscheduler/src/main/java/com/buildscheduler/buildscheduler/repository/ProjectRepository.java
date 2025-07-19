@@ -16,6 +16,28 @@ import java.util.Optional;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
+
+
+    @Query("SELECT mt FROM MainTask mt " +
+            "LEFT JOIN FETCH mt.siteSupervisor " +
+            "LEFT JOIN FETCH mt.equipmentManager " + // ✅ added
+            "WHERE mt.project.id = :projectId " +
+            "ORDER BY mt.id")
+    List<MainTask> findMainTasksByProjectId(@Param("projectId") Long projectId);
+
+    @Query("SELECT st FROM Subtask st " +
+            "LEFT JOIN FETCH st.mainTask " +
+            "WHERE st.mainTask.id IN :mainTaskIds " +
+            "ORDER BY st.mainTask.id, st.id")
+    List<Subtask> findSubtasksByMainTaskIds(@Param("mainTaskIds") List<Long> mainTaskIds);
+
+    @Query("SELECT p FROM Project p " +
+            "LEFT JOIN FETCH p.projectManager " +
+            "LEFT JOIN FETCH p.siteSupervisor " +
+            "LEFT JOIN FETCH p.equipmentManager " +
+            "WHERE p.id = :id")
+    Optional<Project> findProjectWithManagers(@Param("id") Long id);
+
     @Query("SELECT p.id, " +
             "COUNT(st.id) AS totalSubtasks, " +
             "SUM(CASE WHEN st.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedSubtasks " +
@@ -28,24 +50,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     Page<Project> findByProjectManager(User manager, Pageable pageable);
 
-    @Query("SELECT p FROM Project p " +
-            "LEFT JOIN FETCH p.projectManager " +
-            "LEFT JOIN FETCH p.siteSupervisor " +
-            "LEFT JOIN FETCH p.equipmentManager " +
-            "WHERE p.id = :id")
-    Optional<Project> findProjectWithManagers(@Param("id") Long id);
 
-    @Query("SELECT mt FROM MainTask mt " +
-            "LEFT JOIN FETCH mt.siteSupervisor " +
-            "WHERE mt.project.id = :projectId " +
-            "ORDER BY mt.id")
-    List<MainTask> findMainTasksByProjectId(@Param("projectId") Long projectId);
-
-    @Query("SELECT st FROM Subtask st " +
-            "LEFT JOIN FETCH st.mainTask " + // Ensure mainTask is initialized
-            "WHERE st.mainTask.id IN :mainTaskIds " +
-            "ORDER BY st.mainTask.id, st.id")
-    List<Subtask> findSubtasksByMainTaskIds(@Param("mainTaskIds") List<Long> mainTaskIds);
     // ========== ALTERNATIVE APPROACHES ==========
 
     /**

@@ -155,11 +155,8 @@ public class ProjectServiceImpl implements ProjectService {
         dto.setProjectManagerName(entity.getProjectManager().getUsername());
         dto.setStartDate(entity.getStartDate());
         dto.setEndDate(entity.getEndDate());
-        dto.setActualStartDate(entity.getActualStartDate());
-        dto.setActualEndDate(entity.getActualEndDate());
         dto.setStatus(entity.getStatus());
         dto.setEstimatedBudget(entity.getEstimatedBudget());
-        dto.setActualBudget(entity.getActualBudget());
         dto.setLocation(entity.getLocation());
         dto.setPriority(entity.getPriority());
 

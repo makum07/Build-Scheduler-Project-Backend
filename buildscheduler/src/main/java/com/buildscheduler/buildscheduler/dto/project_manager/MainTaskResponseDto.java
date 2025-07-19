@@ -15,6 +15,8 @@ public class MainTaskResponseDto {
     private Long projectId;
     private Long supervisorId;
     private String supervisorName;
+    private Long equipmentManagerId;
+    private String equipmentManagerName;
     private LocalDate plannedStartDate;
     private LocalDate plannedEndDate;
     private LocalDate actualStartDate;
@@ -25,4 +27,5 @@ public class MainTaskResponseDto {
     private Integer actualHours;
     private double completionPercentage;  // Added
     private boolean overdue;              // Added
+
 }
