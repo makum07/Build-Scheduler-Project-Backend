@@ -2,11 +2,7 @@ package com.buildscheduler.buildscheduler.mapper;
 
 import com.buildscheduler.buildscheduler.dto.auth.UserDto;
 import com.buildscheduler.buildscheduler.dto.project_manager.UserTableDto;
-import com.buildscheduler.buildscheduler.dto.auth.FullUserProfileDto;
-import com.buildscheduler.buildscheduler.dto.worker.SkillDto;
-import com.buildscheduler.buildscheduler.dto.worker.AvailabilitySlotDto;
 import com.buildscheduler.buildscheduler.dto.worker.SimpleUserDto;
-import com.buildscheduler.buildscheduler.dto.site_supervisor.AssignmentDto;
 import com.buildscheduler.buildscheduler.model.Role;
 import com.buildscheduler.buildscheduler.model.User;
 import org.springframework.stereotype.Component;
@@ -84,65 +80,65 @@ public class UserMapper implements Mapper<User, UserDto> {
                 .collect(Collectors.toList());
     }
 
-    public FullUserProfileDto toFullProfileDto(User user) {
-        FullUserProfileDto dto = new FullUserProfileDto();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
-        dto.setPhone(user.getPhone());
-        dto.setProfileStatus(user.getProfileStatus());
-
-        String role = user.getRoles().stream()
-                .map(Role::getName)
-                .map(r -> r.replace("ROLE_", "").replace("_", " ").toUpperCase())
-                .findFirst()
-                .orElse("UNKNOWN");
-        dto.setRole(role);
-
-        dto.setSkills(user.getSkills().stream()
-                .map(skill -> new SkillDto(skill.getId(), skill.getName()))
-                .collect(Collectors.toList()));
-
-        dto.setCertifications(user.getCertifications());
-
-        dto.setAvailabilitySlots(user.getAvailabilitySlots().stream()
-                .map(slot -> new AvailabilitySlotDto(
-                        slot.getId(),
-                        slot.getDate(),
-                        slot.getStartTime(),
-                        slot.getEndTime()
-                ))
-                .collect(Collectors.toList()));
-
-        if (user.getSiteSupervisor() != null) {
-            dto.setSiteSupervisor(new SimpleUserDto(
-                    user.getSiteSupervisor().getId(),
-                    user.getSiteSupervisor().getUsername(),
-                    user.getSiteSupervisor().getEmail()
-            ));
-        }
-
-        if (user.getProjectManager() != null) {
-            dto.setProjectManager(new SimpleUserDto(
-                    user.getProjectManager().getId(),
-                    user.getProjectManager().getUsername(),
-                    user.getProjectManager().getEmail()
-            ));
-        }
-
-        dto.setAssignments(user.getAssignments().stream()
-                .map(a -> new AssignmentDto(
-                        a.getId(),
-                        a.getMainTask().getId(),
-                        a.getMainTask().getTitle(),
-                        a.getStartTime(),
-                        a.getEndTime(),
-                        a.getStatus() != null ? a.getStatus().name() : "UNKNOWN"
-                ))
-                .collect(Collectors.toList()));
-
-        return dto;
-    }
+//    public FullUserProfileDto toFullProfileDto(User user) {
+//        FullUserProfileDto dto = new FullUserProfileDto();
+//        dto.setId(user.getId());
+//        dto.setUsername(user.getUsername());
+//        dto.setEmail(user.getEmail());
+//        dto.setPhone(user.getPhone());
+//        dto.setProfileStatus(user.getProfileStatus());
+//
+//        String role = user.getRoles().stream()
+//                .map(Role::getName)
+//                .map(r -> r.replace("ROLE_", "").replace("_", " ").toUpperCase())
+//                .findFirst()
+//                .orElse("UNKNOWN");
+//        dto.setRole(role);
+//
+//        dto.setSkills(user.getSkills().stream()
+//                .map(skill -> new SkillDto(skill.getId(), skill.getName()))
+//                .collect(Collectors.toList()));
+//
+//        dto.setCertifications(user.getCertifications());
+//
+//        dto.setAvailabilitySlots(user.getAvailabilitySlots().stream()
+//                .map(slot -> new AvailabilitySlotDto(
+//                        slot.getId(),
+//                        slot.getDate(),
+//                        slot.getStartTime(),
+//                        slot.getEndTime()
+//                ))
+//                .collect(Collectors.toList()));
+//
+//        if (user.getSiteSupervisor() != null) {
+//            dto.setSiteSupervisor(new SimpleUserDto(
+//                    user.getSiteSupervisor().getId(),
+//                    user.getSiteSupervisor().getUsername(),
+//                    user.getSiteSupervisor().getEmail()
+//            ));
+//        }
+//
+//        if (user.getProjectManager() != null) {
+//            dto.setProjectManager(new SimpleUserDto(
+//                    user.getProjectManager().getId(),
+//                    user.getProjectManager().getUsername(),
+//                    user.getProjectManager().getEmail()
+//            ));
+//        }
+//
+//        dto.setAssignments(user.getAssignments().stream()
+//                .map(a -> new AssignmentDto(
+//                        a.getId(),
+//                        a.getMainTask().getId(),
+//                        a.getMainTask().getTitle(),
+//                        a.getStartTime(),
+//                        a.getEndTime(),
+//                        a.getStatus() != null ? a.getStatus().name() : "UNKNOWN"
+//                ))
+//                .collect(Collectors.toList()));
+//
+//        return dto;
+//    }
 
     public SimpleUserDto toSimpleUserDto(User user) {
         if (user == null) return null;

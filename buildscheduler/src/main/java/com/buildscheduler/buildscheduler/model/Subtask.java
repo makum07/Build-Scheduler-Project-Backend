@@ -31,8 +31,6 @@ public class Subtask extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime plannedEndTime;
 
-    private LocalDateTime actualStartTime;
-    private LocalDateTime actualEndTime;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -41,8 +39,7 @@ public class Subtask extends BaseEntity {
     @Column(nullable = false)
     private Integer estimatedHours = 0;
 
-    @Column(nullable = false)
-    private Integer actualHours = 0;
+
 
     @Column(nullable = false)
     private Integer requiredWorkers = 1;
@@ -60,14 +57,16 @@ public class Subtask extends BaseEntity {
     @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Assignment> assignments = new HashSet<>();
 
-//    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-//    private Set<EquipmentAssignment> equipmentAssignments = new HashSet<>();
-//
+    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<EquipmentAssignment> equipmentAssignments = new HashSet<>();
+
 //    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 //    private Set<EquipmentRequest> equipmentRequests = new HashSet<>();
 
-
-
+    public boolean isOverdue() {
+        return plannedEndTime.isBefore(LocalDateTime.now()) &&
+                status != TaskStatus.COMPLETED && status != TaskStatus.CANCELLED;
+    }
     public boolean hasRequiredSkills(Set<Skill> workerSkills) {
         return workerSkills.containsAll(requiredSkills);
     }

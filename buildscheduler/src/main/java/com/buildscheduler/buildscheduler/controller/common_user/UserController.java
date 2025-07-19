@@ -1,9 +1,7 @@
 package com.buildscheduler.buildscheduler.controller.common_user;
 
-import com.buildscheduler.buildscheduler.dto.auth.FullUserProfileDto;
 import com.buildscheduler.buildscheduler.dto.auth.UserDto;
 import com.buildscheduler.buildscheduler.mapper.UserMapper;
-import com.buildscheduler.buildscheduler.model.User;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.service.custom.UserService;
 import jakarta.validation.constraints.Email;
@@ -34,10 +32,10 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.ofSuccess("User retrieved successfully by ID", user));
     }
 
-    @GetMapping("/profile-by-id")
-    public ResponseEntity<ApiResponse<FullUserProfileDto>> getFullUserProfileById(@RequestParam Long id) {
-        User user = userService.getUserEntityById(id);
-        FullUserProfileDto fullProfile = userMapper.toFullProfileDto(user);
-        return ResponseEntity.ok(ApiResponse.ofSuccess("Full user profile retrieved", fullProfile));
-    }
+//    @GetMapping("/profile-by-id")
+//    public ResponseEntity<ApiResponse<FullUserProfileDto>> getFullUserProfileById(@RequestParam Long id) {
+//        User user = userService.getUserEntityById(id);
+//        FullUserProfileDto fullProfile = userMapper.toFullProfileDto(user);
+//        return ResponseEntity.ok(ApiResponse.ofSuccess("Full user profile retrieved", fullProfile));
+//    }
 }

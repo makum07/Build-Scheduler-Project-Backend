@@ -63,9 +63,7 @@ public class Project extends BaseEntity {
     @JsonIgnore
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<MainTask> mainTasks = new HashSet<>();
-    @JsonIgnore
-    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<ProjectAssignment> projectAssignments = new HashSet<>();
+
 
 
 
