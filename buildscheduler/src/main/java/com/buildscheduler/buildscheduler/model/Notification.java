@@ -24,6 +24,10 @@ public class Notification extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private NotificationType type;
     public enum NotificationType {
-        ASSIGNMENT, MAINTENANCE, APPROVAL, SYSTEM
+        ASSIGNMENT,
+        MAINTENANCE,
+        APPROVAL,
+        SYSTEM,
+        EQUIPMENT_REQUEST
     }
 }

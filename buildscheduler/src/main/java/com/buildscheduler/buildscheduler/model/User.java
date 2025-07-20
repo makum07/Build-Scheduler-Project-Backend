@@ -14,10 +14,17 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "users")
+@ToString(exclude = {
+        "skills", "certifications", "availabilitySlots",
+        "assignments", "supervisedWorkers", "managedTeam",
+        "managedProjects", "supervisedTasks", "managedEquipment",
+        "notifications"
+})
 public class User extends BaseEntity implements UserDetails {
 
     @Id
@@ -126,6 +133,27 @@ public class User extends BaseEntity implements UserDetails {
                 .toList();
     }
 
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", username='" + username + '\'' +
+                ", email='" + email + '\'' +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof User)) return false;
+        User user = (User) o;
+        return id != null && Objects.equals(id, user.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }

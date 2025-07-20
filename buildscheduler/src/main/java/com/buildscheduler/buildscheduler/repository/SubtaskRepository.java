@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface SubtaskRepository extends JpaRepository<Subtask, Long> {
     List<Subtask> findByMainTaskIdIn(List<Long> mainTaskIds);
@@ -14,4 +15,9 @@ public interface SubtaskRepository extends JpaRepository<Subtask, Long> {
     @Modifying
     @Query("DELETE FROM Subtask s WHERE s.mainTask.id = :mainTaskId")
     void deleteByMainTaskId(@Param("mainTaskId") Long mainTaskId);
+
+    @Query("SELECT s FROM Subtask s LEFT JOIN FETCH s.equipmentNeeds WHERE s.id = :id")
+    Optional<Subtask> findWithEquipmentNeeds(@Param("id") Long id);
+
+
 }

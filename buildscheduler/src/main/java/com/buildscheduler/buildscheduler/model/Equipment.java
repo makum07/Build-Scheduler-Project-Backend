@@ -2,10 +2,7 @@ package com.buildscheduler.buildscheduler.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,6 +16,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Equipment extends BaseEntity {
+
     @NotBlank
     @Column(nullable = false)
     private String name;
@@ -41,10 +39,8 @@ public class Equipment extends BaseEntity {
     @JoinColumn(name = "manager_id")
     private User equipmentManager;
 
-
     @Column(precision = 10, scale = 2)
     private BigDecimal purchasePrice;
-
 
     @Column(nullable = false)
     private Integer warrantyMonths = 12;
@@ -60,23 +56,19 @@ public class Equipment extends BaseEntity {
     @Column(length = 1000)
     private String notes;
 
-    // Relationships
     @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<MaintenanceSchedule> maintenanceSchedules = new HashSet<>();
 
     @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<EquipmentAssignment> assignments = new HashSet<>();
 
-    @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<EquipmentRequest> requests = new HashSet<>();
 
-    // Helper methods
+    // 🔁 Removed equipmentRequests to simplify
+
     public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
         return status == EquipmentStatus.AVAILABLE &&
-                maintenanceSchedules.stream()
-                        .noneMatch(schedule -> schedule.overlapsWith(start, end)) &&
-                assignments.stream()
-                        .noneMatch(assignment -> assignment.overlapsWith(start, end));
+                maintenanceSchedules.stream().noneMatch(s -> s.overlapsWith(start, end)) &&
+                assignments.stream().noneMatch(a -> a.overlapsWith(start, end));
     }
 
     private Boolean maintenanceDueAlert = false;

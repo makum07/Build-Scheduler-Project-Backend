@@ -1,5 +1,6 @@
 package com.buildscheduler.buildscheduler.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,8 +14,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EquipmentRequest extends BaseEntity {
+
+    /**
+     * Prevent Jackson from climbing back up into Subtask
+     * while Hibernate is still mutating its collection.
+     */
     @ManyToOne(optional = false)
     @JoinColumn(name = "subtask_id", nullable = false)
+    @JsonIgnore
     private Subtask subtask;
 
     @ManyToOne
@@ -37,7 +44,6 @@ public class EquipmentRequest extends BaseEntity {
     @JoinColumn(name = "approved_by_id")
     private User approvedBy;
 
-
     @Column(nullable = false)
     private LocalDateTime requiredStartTime;
 
@@ -53,7 +59,6 @@ public class EquipmentRequest extends BaseEntity {
     @Column(nullable = false)
     private Integer priority = 1;
 
-    // Helper methods
     public boolean isUrgent() {
         return priority >= 3;
     }

@@ -38,6 +38,8 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
+//
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -50,10 +52,13 @@ public class SecurityConfig {
                                 "/api/profile/**",
                                 "/api/user/**"
                         ).permitAll()
+                        // Add role-specific access
+                        .requestMatchers("/api/site-supervisor/**").hasRole("SITE_SUPERVISOR")
+//                        .requestMatchers("/api/project-manager/**").hasRole("PROJECT_MANAGER")
+//                        .requestMatchers("/api/equipment-manager/**").hasRole("EQUIPMENT_MANAGER")
+//                        .requestMatchers("/api/worker/**").hasRole("WORKER")
                         .anyRequest().authenticated()
                 )
-
-
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
