@@ -98,7 +98,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}/structure")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'SITE_SUPERVISOR', 'EQUIPMENT_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<ProjectStructureResponse>> getProjectStructure(@PathVariable Long id) {
         ProjectStructureResponse structure = projectStructureService.getProjectStructure(id);

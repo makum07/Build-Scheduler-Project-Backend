@@ -13,24 +13,35 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface AvailabilitySlotRepository extends JpaRepository<WorkerAvailabilitySlot, Long> {
+public interface WorkerAvailabilitySlotRepository extends JpaRepository<WorkerAvailabilitySlot, Long> {
+
     Optional<WorkerAvailabilitySlot> findByUserAndDate(User user, LocalDate date);
 
-    @Query("SELECT a FROM AvailabilitySlot a WHERE a.user = :user AND a.date = :date " +
-            "AND a.startTime <= :startTime AND a.endTime >= :endTime")
+    @Query("""
+      SELECT s 
+        FROM WorkerAvailabilitySlot s 
+       WHERE s.user      = :user 
+         AND s.date      = :date
+         AND s.startTime <= :startTime 
+         AND s.endTime   >= :endTime
+    """)
     Optional<WorkerAvailabilitySlot> findContainingSlot(
-            @Param("user") User user,
-            @Param("date") LocalDate date,
+            @Param("user")      User user,
+            @Param("date")      LocalDate date,
             @Param("startTime") LocalTime startTime,
-            @Param("endTime") LocalTime endTime
+            @Param("endTime")   LocalTime endTime
     );
 
-    @Query("SELECT a FROM AvailabilitySlot a WHERE a.user = :user " +
-            "AND a.date BETWEEN :start AND :end")
+    @Query("""
+      SELECT s 
+        FROM WorkerAvailabilitySlot s 
+       WHERE s.user = :user 
+         AND s.date BETWEEN :start AND :end
+    """)
     List<WorkerAvailabilitySlot> findByUserInDateRange(
-            @Param("user") User user,
+            @Param("user")  User user,
             @Param("start") LocalDate start,
-            @Param("end") LocalDate end
+            @Param("end")   LocalDate end
     );
 
     List<WorkerAvailabilitySlot> findByUser(User user);

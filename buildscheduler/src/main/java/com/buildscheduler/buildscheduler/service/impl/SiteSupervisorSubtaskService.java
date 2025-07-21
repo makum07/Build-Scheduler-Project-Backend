@@ -61,8 +61,6 @@ public class SiteSupervisorSubtaskService {
         Subtask subtask = new Subtask();
         subtask.setTitle(dto.getTitle());
         subtask.setDescription(dto.getDescription());
-        subtask.setPlannedStartTime(dto.getPlannedStartTime());
-        subtask.setPlannedEndTime(dto.getPlannedEndTime());
         subtask.setEstimatedHours(dto.getEstimatedHours());
         subtask.setRequiredWorkers(dto.getRequiredWorkers());
         subtask.setPriority(dto.getPriority());
@@ -73,18 +71,7 @@ public class SiteSupervisorSubtaskService {
 
         if (dto.getEquipmentNeeds() != null) {
             for (EquipmentNeedDto needDto : dto.getEquipmentNeeds()) {
-                EquipmentNeed need = new EquipmentNeed();
-                need.setRequiredType(needDto.getRequiredType());
-                need.setRequestNotes(needDto.getRequestNotes());
-                need.setRequiredStartTime(
-                        needDto.getRequiredStartTime() != null ? needDto.getRequiredStartTime() : dto.getPlannedStartTime()
-                );
-                need.setRequiredEndTime(
-                        needDto.getRequiredEndTime() != null ? needDto.getRequiredEndTime() : dto.getPlannedEndTime()
-                );
-                need.setPriority(needDto.getPriority());
 
-                subtask.addEquipmentNeed(need);
             }
         }
 
@@ -110,8 +97,7 @@ public class SiteSupervisorSubtaskService {
         dto.setId(s.getId());
         dto.setTitle(s.getTitle());
         dto.setDescription(s.getDescription());
-        dto.setPlannedStartTime(s.getPlannedStartTime());
-        dto.setPlannedEndTime(s.getPlannedEndTime());
+
         dto.setEstimatedHours(s.getEstimatedHours());
         dto.setRequiredWorkers(s.getRequiredWorkers());
         dto.setPriority(s.getPriority());
@@ -131,11 +117,7 @@ public class SiteSupervisorSubtaskService {
                         new HashSet<>(s.getEquipmentNeeds()).stream()
                                 .map(e -> {
                                     EquipmentNeedDto edto = new EquipmentNeedDto();
-                                    edto.setRequiredType(e.getRequiredType());
-                                    edto.setRequiredStartTime(e.getRequiredStartTime());
-                                    edto.setRequiredEndTime(e.getRequiredEndTime());
-                                    edto.setRequestNotes(e.getRequestNotes());
-                                    edto.setPriority(e.getPriority());
+
                                     return edto;
                                 }).collect(Collectors.toSet())
         );

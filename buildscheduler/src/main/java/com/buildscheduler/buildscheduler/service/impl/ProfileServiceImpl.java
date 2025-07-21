@@ -28,14 +28,14 @@ import java.util.stream.Collectors;
 @Transactional
 public class ProfileServiceImpl implements ProfileService {
     private final SkillRepository skillRepository;
-    private final AvailabilitySlotRepository slotRepository;
+    private final WorkerAvailabilitySlotRepository slotRepository;
     private final UserRepository userRepository;
     private final SkillMapper skillMapper;
     private final AvailabilitySlotMapper slotMapper;
     private final ProfileMapper profileMapper;
 
     public ProfileServiceImpl(SkillRepository skillRepository,
-                              AvailabilitySlotRepository slotRepository,
+                              WorkerAvailabilitySlotRepository slotRepository,
                               UserRepository userRepository,
                               SkillMapper skillMapper,
                               AvailabilitySlotMapper slotMapper,
