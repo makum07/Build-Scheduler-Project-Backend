@@ -73,19 +73,19 @@ public class User extends BaseEntity implements UserDetails {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @BatchSize(size = 25)
-    private Set<AvailabilitySlot> availabilitySlots = new HashSet<>();
+    private Set<WorkerAvailabilitySlot> workerAvailabilitySlots = new HashSet<>();
 
     @Column(nullable = false, columnDefinition = "varchar(20) default 'INCOMPLETE'")
     private String profileStatus = "INCOMPLETE";
 
     public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
-        return availabilitySlots.stream().anyMatch(slot -> slot.covers(start, end));
+        return workerAvailabilitySlots.stream().anyMatch(slot -> slot.covers(start, end));
     }
 
     // Assignments and team hierarchy
     @OneToMany(mappedBy = "worker", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @BatchSize(size = 25)
-    private Set<Assignment> assignments = new HashSet<>();
+    private Set<WorkerAssignment> workerAssignments = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_supervisor_id")

@@ -1,6 +1,5 @@
 package com.buildscheduler.buildscheduler.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import jakarta.persistence.*;
 
@@ -10,22 +9,21 @@ import java.time.LocalTime;
 
 @Entity
 @Table(
-        name = "equipment_assignments",
+        name = "worker_assignments",
         indexes = {
-                @Index(name = "idx_equipment_date", columnList = "equipment_id, start_date"),
+                @Index(name = "idx_worker_date", columnList = "worker_id, start_date"),
                 @Index(name = "idx_subtask", columnList = "subtask_id")
         }
 )
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class EquipmentAssignment extends BaseEntity {
+public class WorkerAssignment extends BaseEntity {
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "equipment_id", nullable = false)
-    private Equipment equipment;
+    @JoinColumn(name = "worker_id", nullable = false)
+    private User worker;
 
-    @JsonIgnore
     @ManyToOne(optional = false)
     @JoinColumn(name = "subtask_id", nullable = false)
     private Subtask subtask;
@@ -33,6 +31,7 @@ public class EquipmentAssignment extends BaseEntity {
     @ManyToOne(optional = false)
     @JoinColumn(name = "assigned_by_id", nullable = false)
     private User assignedBy;
+
 
     @Column(nullable = false)
     private LocalDate startDate;
@@ -47,17 +46,17 @@ public class EquipmentAssignment extends BaseEntity {
     private LocalTime endTime;
 
     @Column(length = 1000)
-    private String equipmentNotes;
+    private String workerNotes;
 
-    public boolean overlapsWith(
-            LocalDate startDate, LocalTime startTime,
-            LocalDate endDate,   LocalTime endTime
-    ) {
+    public boolean overlapsWith(LocalDate startDate, LocalTime startTime, LocalDate endDate, LocalTime endTime) {
         LocalDateTime thisStart = LocalDateTime.of(this.startDate, this.startTime);
-        LocalDateTime thisEnd   = LocalDateTime.of(this.endDate,   this.endTime);
+        LocalDateTime thisEnd = LocalDateTime.of(this.endDate, this.endTime);
+
         LocalDateTime otherStart = LocalDateTime.of(startDate, startTime);
-        LocalDateTime otherEnd   = LocalDateTime.of(endDate,   endTime);
+        LocalDateTime otherEnd = LocalDateTime.of(endDate, endTime);
+
         return !otherEnd.isBefore(thisStart) && !otherStart.isAfter(thisEnd);
     }
+
 
 }

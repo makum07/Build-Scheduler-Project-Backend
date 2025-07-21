@@ -57,7 +57,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     private void updateProfileStatus(User user) {
         boolean hasSkills = !user.getSkills().isEmpty();
-        boolean hasAvailability = !user.getAvailabilitySlots().isEmpty();
+        boolean hasAvailability = !user.getWorkerAvailabilitySlots().isEmpty();
         user.setProfileStatus(hasSkills && hasAvailability ? "COMPLETE" : "INCOMPLETE");
         userRepository.save(user);
     }
@@ -117,12 +117,12 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public AvailabilitySlotDto addAvailabilitySlot(AvailabilitySlotDto dto) {
         User user = getCurrentUser();
-        Optional<AvailabilitySlot> existing = slotRepository.findByUserAndDate(user, dto.getDate());
+        Optional<WorkerAvailabilitySlot> existing = slotRepository.findByUserAndDate(user, dto.getDate());
         if (existing.isPresent()) {
             throw new ConflictException("Availability slot already exists for this date");
         }
 
-        AvailabilitySlot slot = slotMapper.toEntity(dto);
+        WorkerAvailabilitySlot slot = slotMapper.toEntity(dto);
         slot.setUser(user);
         slotRepository.save(slot);
         updateProfileStatus(user);
@@ -155,7 +155,7 @@ public class ProfileServiceImpl implements ProfileService {
                     });
                 } else {
                     // Create new slot
-                    AvailabilitySlot newSlot = slotMapper.toEntity(slotDto);
+                    WorkerAvailabilitySlot newSlot = slotMapper.toEntity(slotDto);
                     newSlot.setUser(user);
                     slotRepository.save(newSlot);
                 }
@@ -172,11 +172,11 @@ public class ProfileServiceImpl implements ProfileService {
     public void removeAvailabilitySlot(Long id) {
         User user = getCurrentUser();
 
-        AvailabilitySlot slotToRemove = slotRepository.findById(id)
+        WorkerAvailabilitySlot slotToRemove = slotRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Availability slot not found"));
 
         // Remove from user's availabilitySlots set first (in-memory)
-        user.getAvailabilitySlots().removeIf(slot -> slot.getId().equals(id));
+        user.getWorkerAvailabilitySlots().removeIf(slot -> slot.getId().equals(id));
 
         // Then delete from DB
         slotRepository.delete(slotToRemove);
@@ -187,7 +187,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public List<AvailabilitySlotDto> getAllAvailabilitySlots() {
         User user = getCurrentUser();
-        List<AvailabilitySlot> slots = slotRepository.findByUser(user);
+        List<WorkerAvailabilitySlot> slots = slotRepository.findByUser(user);
         return slots.stream()
                 .map(slotMapper::toDto)
                 .collect(Collectors.toList());
@@ -197,7 +197,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public List<AvailabilitySlotDto> getAvailabilitySlots(LocalDate start, LocalDate end) {
         User user = getCurrentUser();
-        List<AvailabilitySlot> slots = slotRepository.findByUserInDateRange(user, start, end);
+        List<WorkerAvailabilitySlot> slots = slotRepository.findByUserInDateRange(user, start, end);
         return slots.stream()
                 .map(slotMapper::toDto)
                 .collect(Collectors.toList());

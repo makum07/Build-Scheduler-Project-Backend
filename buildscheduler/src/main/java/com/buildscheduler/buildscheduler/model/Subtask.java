@@ -1,11 +1,14 @@
 package com.buildscheduler.buildscheduler.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -33,10 +36,22 @@ public class Subtask extends BaseEntity {
     private MainTask mainTask;
 
     @Column(nullable = false)
-    private LocalDateTime plannedStartTime;
+    private LocalDate startDate;
 
     @Column(nullable = false)
-    private LocalDateTime plannedEndTime;
+    private LocalDate endDate;
+
+    @Column(nullable = false)
+    private LocalTime startTime;
+
+    @Column(nullable = false)
+    private LocalTime endTime;
+
+    @Column(nullable = false)
+    private LocalTime plannedStartTime;
+
+    @Column(nullable = false)
+    private LocalTime plannedEndTime;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -52,30 +67,39 @@ public class Subtask extends BaseEntity {
     private Integer priority = 1;
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "subtask_required_skills",
+    @JoinTable(
+            name = "subtask_required_skills",
             joinColumns = @JoinColumn(name = "subtask_id"),
-            inverseJoinColumns = @JoinColumn(name = "skill_id"))
+            inverseJoinColumns = @JoinColumn(name = "skill_id")
+    )
     private Set<Skill> requiredSkills = new HashSet<>();
 
-    // 🧑‍🔧 Workers assigned
-    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Assignment> assignments = new HashSet<>();
+    @JsonIgnore
+    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<WorkerAssignment> workerAssignments = new HashSet<>();
 
-    // ⚙️ Equipments assigned
-    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<EquipmentAssignment> equipmentAssignments = new HashSet<>();
 
-    @OneToMany(mappedBy = "subtask", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<EquipmentNeed> equipmentNeeds = new HashSet<>();
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "subtask_equipment_needs",
+            joinColumns = @JoinColumn(name = "subtask_id"),
+            inverseJoinColumns = @JoinColumn(name = "equipment_id")
+    )
+    private Set<Equipment> equipmentNeeds = new HashSet<>();
 
+    @Column(length = 1000)
+    private String equipmentRequestNotes;
 
     public enum TaskStatus {
         PLANNED, ASSIGNED, IN_PROGRESS, ON_HOLD, COMPLETED, CANCELLED, DELAYED
     }
 
     public boolean isOverdue() {
-        return plannedEndTime.isBefore(LocalDateTime.now())
-                && status != TaskStatus.COMPLETED
-                && status != TaskStatus.CANCELLED;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime subtaskEndDateTime = LocalDateTime.of(endDate, endTime);
+        return status != TaskStatus.COMPLETED && now.isAfter(subtaskEndDateTime);
     }
 }

@@ -12,14 +12,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "availability_slots",
+@Table(name = "worker_availability_slots",
         uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "date"}),
         indexes = {
                 @Index(name = "idx_avail_date", columnList = "date"),
                 @Index(name = "idx_avail_user_date", columnList = "user_id, date")
         })
 @Getter @Setter @NoArgsConstructor
-public class AvailabilitySlot extends BaseEntity {
+public class WorkerAvailabilitySlot extends BaseEntity {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id", nullable = false)
@@ -43,8 +43,8 @@ public class AvailabilitySlot extends BaseEntity {
     }
 
     // Split around assignment
-    public List<AvailabilitySlot> splitForAssignment(LocalDateTime aStart, LocalDateTime aEnd) {
-        List<AvailabilitySlot> newSlots = new ArrayList<>();
+    public List<WorkerAvailabilitySlot> splitForAssignment(LocalDateTime aStart, LocalDateTime aEnd) {
+        List<WorkerAvailabilitySlot> newSlots = new ArrayList<>();
         LocalTime as = aStart.toLocalTime(), ae = aEnd.toLocalTime();
         if (startTime.isBefore(as)) {
             newSlots.add(createNewSlot(startTime, as));
@@ -55,8 +55,8 @@ public class AvailabilitySlot extends BaseEntity {
         return newSlots;
     }
 
-    private AvailabilitySlot createNewSlot(LocalTime ns, LocalTime ne) {
-        AvailabilitySlot slot = new AvailabilitySlot();
+    private WorkerAvailabilitySlot createNewSlot(LocalTime ns, LocalTime ne) {
+        WorkerAvailabilitySlot slot = new WorkerAvailabilitySlot();
         slot.setUser(user);
         slot.setDate(date);
         slot.setStartTime(ns);

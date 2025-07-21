@@ -1,6 +1,7 @@
 package com.buildscheduler.buildscheduler.dto.site_supervisor;
 
 import com.buildscheduler.buildscheduler.model.Equipment;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -32,6 +33,6 @@ public class SubtaskRequestDto {
 
     @NotEmpty
     private Set<String> requiredSkills;
-
+    @JsonProperty("equipmentNeeds")
     private Set<EquipmentNeedDto> equipmentNeeds = new HashSet<>();
 }

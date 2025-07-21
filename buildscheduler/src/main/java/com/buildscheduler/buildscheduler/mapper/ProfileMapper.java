@@ -28,7 +28,7 @@ public class ProfileMapper {
                 .map(skillMapper::toDto)
                 .collect(Collectors.toList()));
         dto.setCertifications(user.getCertifications());
-        dto.setAvailability(user.getAvailabilitySlots().stream()
+        dto.setAvailability(user.getWorkerAvailabilitySlots().stream()
                 .map(slotMapper::toDto)
                 .collect(Collectors.toList()));
         return dto;

@@ -58,7 +58,6 @@ public class SiteSupervisorSubtaskService {
             throw new AccessDeniedException("Not authorized for this project");
         }
 
-        // 1. Create and populate subtask
         Subtask subtask = new Subtask();
         subtask.setTitle(dto.getTitle());
         subtask.setDescription(dto.getDescription());
@@ -72,73 +71,35 @@ public class SiteSupervisorSubtaskService {
         subtask.setMainTask(mainTask);
         subtask.setProject(mainTask.getProject());
 
-        // 2. Handle Equipment Needs
-        Set<EquipmentNeed> needs = new HashSet<>();
         if (dto.getEquipmentNeeds() != null) {
             for (EquipmentNeedDto needDto : dto.getEquipmentNeeds()) {
                 EquipmentNeed need = new EquipmentNeed();
                 need.setRequiredType(needDto.getRequiredType());
                 need.setRequestNotes(needDto.getRequestNotes());
-                need.setRequiredStartTime(dto.getPlannedStartTime());
-                need.setRequiredEndTime(dto.getPlannedEndTime());
-                need.setPriority(dto.getPriority());
-                need.setSubtask(subtask); // 🔥 Required to persist with cascade
-                needs.add(need);
+                need.setRequiredStartTime(
+                        needDto.getRequiredStartTime() != null ? needDto.getRequiredStartTime() : dto.getPlannedStartTime()
+                );
+                need.setRequiredEndTime(
+                        needDto.getRequiredEndTime() != null ? needDto.getRequiredEndTime() : dto.getPlannedEndTime()
+                );
+                need.setPriority(needDto.getPriority());
+
+                subtask.addEquipmentNeed(need);
             }
-            subtask.setEquipmentNeeds(needs); // 🔥 Assign to subtask before saving
         }
 
-        // 3. Save subtask with needs (cascade saves EquipmentNeed)
         Subtask savedSubtask = subtaskRepository.save(subtask);
-
-        // 4. Notify Equipment Manager
         notifyEquipmentManager(savedSubtask);
 
-        // 5. Return response
         return convertToDto(savedSubtask);
-    }
-
-    @Transactional
-    public SubtaskResponseDto updateSubtask(Long id, SubtaskRequestDto dto) {
-        User currentUser = getCurrentUser();
-        Subtask subtask = subtaskRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Subtask not found"));
-
-        if (!subtask.getProject().getSiteSupervisor().equals(currentUser)) {
-            throw new AccessDeniedException("Not authorized to update");
-        }
-
-        subtask.setTitle(dto.getTitle());
-        subtask.setDescription(dto.getDescription());
-        subtask.setPlannedStartTime(dto.getPlannedStartTime());
-        subtask.setPlannedEndTime(dto.getPlannedEndTime());
-        subtask.setEstimatedHours(dto.getEstimatedHours());
-        subtask.setRequiredWorkers(dto.getRequiredWorkers());
-        subtask.setPriority(dto.getPriority());
-
-        if (dto.getRequiredSkills() != null) {
-            subtask.setRequiredSkills(lookupSkills(dto.getRequiredSkills()));
-        }
-
-        return convertToDto(subtaskRepository.save(subtask));
-    }
-
-    @Transactional
-    public void deleteSubtask(Long id) {
-        User currentUser = getCurrentUser();
-        Subtask subtask = subtaskRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Subtask not found"));
-
-        if (!subtask.getProject().getSiteSupervisor().equals(currentUser)) {
-            throw new AccessDeniedException("Not authorized to delete");
-        }
-
-        subtaskRepository.delete(subtask);
     }
 
     private Set<Skill> lookupSkills(Set<String> names) {
         if (names == null || names.isEmpty()) return Set.of();
+
         return names.stream()
+                .map(String::toLowerCase)
+                .distinct()
                 .map(name -> skillRepository.findByNameIgnoreCase(name)
                         .orElseThrow(() -> new ResourceNotFoundException("Skill not found: " + name)))
                 .collect(Collectors.toSet());
@@ -159,21 +120,24 @@ public class SiteSupervisorSubtaskService {
         dto.setProjectId(s.getProject().getId());
 
         dto.setRequiredSkills(
-                s.getRequiredSkills().stream()
-                        .map(Skill::getName)
-                        .collect(Collectors.toSet())
+                s.getRequiredSkills() == null ? Set.of() :
+                        s.getRequiredSkills().stream()
+                                .map(Skill::getName)
+                                .collect(Collectors.toSet())
         );
 
         dto.setEquipmentNeeds(
-                s.getEquipmentNeeds().stream().map(e -> {
-                    EquipmentNeedDto edto = new EquipmentNeedDto();
-                    edto.setRequiredType(e.getRequiredType());
-                    edto.setRequiredStartTime(e.getRequiredStartTime());
-                    edto.setRequiredEndTime(e.getRequiredEndTime());
-                    edto.setRequestNotes(e.getRequestNotes());
-                    edto.setPriority(e.getPriority());
-                    return edto;
-                }).collect(Collectors.toSet())
+                s.getEquipmentNeeds() == null ? Set.of() :
+                        new HashSet<>(s.getEquipmentNeeds()).stream()
+                                .map(e -> {
+                                    EquipmentNeedDto edto = new EquipmentNeedDto();
+                                    edto.setRequiredType(e.getRequiredType());
+                                    edto.setRequiredStartTime(e.getRequiredStartTime());
+                                    edto.setRequiredEndTime(e.getRequiredEndTime());
+                                    edto.setRequestNotes(e.getRequestNotes());
+                                    edto.setPriority(e.getPriority());
+                                    return edto;
+                                }).collect(Collectors.toSet())
         );
 
         return dto;
