@@ -1,21 +1,12 @@
 package com.buildscheduler.buildscheduler.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.*;
 import jakarta.persistence.*;
-
-import java.time.LocalDate;
+import lombok.*;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
-@Table(
-        name = "equipment_assignments",
-        indexes = {
-                @Index(name = "idx_equipment_date", columnList = "equipment_id, start_date"),
-                @Index(name = "idx_subtask", columnList = "subtask_id")
-        }
-)
+@Table(name = "equipment_assignments")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -35,29 +26,28 @@ public class EquipmentAssignment extends BaseEntity {
     private User assignedBy;
 
     @Column(nullable = false)
-    private LocalDate startDate;
+    private LocalDateTime startTime;
 
     @Column(nullable = false)
-    private LocalDate endDate;
-
-    @Column(nullable = false)
-    private LocalTime startTime;
-
-    @Column(nullable = false)
-    private LocalTime endTime;
+    private LocalDateTime endTime;
 
     @Column(length = 1000)
     private String equipmentNotes;
 
-    public boolean overlapsWith(
-            LocalDate startDate, LocalTime startTime,
-            LocalDate endDate,   LocalTime endTime
-    ) {
-        LocalDateTime thisStart = LocalDateTime.of(this.startDate, this.startTime);
-        LocalDateTime thisEnd   = LocalDateTime.of(this.endDate,   this.endTime);
-        LocalDateTime otherStart = LocalDateTime.of(startDate, startTime);
-        LocalDateTime otherEnd   = LocalDateTime.of(endDate,   endTime);
-        return !otherEnd.isBefore(thisStart) && !otherStart.isAfter(thisEnd);
+    @PostPersist
+    private void createAssignedNonAvailableSlot() {
+        EquipmentNonAvailableSlot slot = new EquipmentNonAvailableSlot();
+        slot.setEquipment(this.equipment);
+        slot.setStartTime(this.startTime);
+        slot.setEndTime(this.endTime);
+        slot.setType(EquipmentNonAvailableSlot.NonAvailabilityType.ASSIGNED);
+        slot.setNotes("Assigned to subtask: " + subtask.getTitle());
+
+        // Add to equipment's non-available slots
+        equipment.getNonAvailableSlots().add(slot);
     }
 
+    public boolean overlapsWith(LocalDateTime checkStart, LocalDateTime checkEnd) {
+        return !checkEnd.isBefore(startTime) && !checkStart.isAfter(endTime);
+    }
 }

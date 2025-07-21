@@ -78,10 +78,6 @@ public class User extends BaseEntity implements UserDetails {
     @Column(nullable = false, columnDefinition = "varchar(20) default 'INCOMPLETE'")
     private String profileStatus = "INCOMPLETE";
 
-    public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
-        return workerAvailabilitySlots.stream().anyMatch(slot -> slot.covers(start, end));
-    }
-
     // Assignments and team hierarchy
     @OneToMany(mappedBy = "worker", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @BatchSize(size = 25)
@@ -124,6 +120,16 @@ public class User extends BaseEntity implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<Notification> notifications = new HashSet<>();
 
+
+    public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
+        boolean hasSlot = workerAvailabilitySlots.stream()
+                .anyMatch(slot -> slot.covers(start, end));
+
+        boolean hasConflict = workerAssignments.stream()
+                .anyMatch(a -> a.overlapsWith(start, end));
+
+        return hasSlot && !hasConflict;
+    }
 
     // Required by Spring Security
     @Override

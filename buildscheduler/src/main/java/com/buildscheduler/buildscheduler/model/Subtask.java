@@ -5,10 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -36,22 +33,10 @@ public class Subtask extends BaseEntity {
     private MainTask mainTask;
 
     @Column(nullable = false)
-    private LocalDate startDate;
+    private LocalDateTime plannedStart;
 
     @Column(nullable = false)
-    private LocalDate endDate;
-
-    @Column(nullable = false)
-    private LocalTime startTime;
-
-    @Column(nullable = false)
-    private LocalTime endTime;
-
-    @Column(nullable = false)
-    private LocalTime plannedStartTime;
-
-    @Column(nullable = false)
-    private LocalTime plannedEndTime;
+    private LocalDateTime plannedEnd;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -98,8 +83,8 @@ public class Subtask extends BaseEntity {
     }
 
     public boolean isOverdue() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime subtaskEndDateTime = LocalDateTime.of(endDate, endTime);
-        return status != TaskStatus.COMPLETED && now.isAfter(subtaskEndDateTime);
+        return LocalDateTime.now().isAfter(plannedEnd)
+                && status != TaskStatus.COMPLETED
+                && status != TaskStatus.CANCELLED;
     }
 }
