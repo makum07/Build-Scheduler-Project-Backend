@@ -28,7 +28,8 @@ public class SiteSupervisorController {
 
     private final SiteSupervisorProjectService projectService;
     private final SiteSupervisorSubtaskService subtaskService;
-//    private final SiteSupervisorAssignmentService assignmentService;
+    private final SiteSupervisorAssignmentService assignmentService;
+
 //    private final SiteSupervisorEquipmentService equipmentService;
 //    private final ConflictDetectionService conflictService;
 //    private final UserRepository userRepository;
@@ -40,6 +41,15 @@ public class SiteSupervisorController {
     public ResponseEntity<ApiResponse<List<ProjectResponseDto>>> getAssignedProjects() {
         List<ProjectResponseDto> projects = projectService.getProjectsForSupervisor();
         return ResponseEntity.ok(ApiResponse.ofSuccess("Projects fetched successfully", projects));
+    }
+
+    @GetMapping("/main-tasks/{mainTaskId}/subtasks")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<SubtaskDetailDto>>> getSubtasksByMainTask(
+            @PathVariable Long mainTaskId
+    ) {
+        List<SubtaskDetailDto> subtasks = projectService.getSubtasksByMainTaskId(mainTaskId);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Subtasks fetched successfully", subtasks));
     }
 
 
@@ -94,6 +104,19 @@ public class SiteSupervisorController {
     ) {
         SubtaskResponseDto updatedSubtask = subtaskService.removeEquipmentFromSubtask(subtaskId, equipmentId);
         return ResponseEntity.ok(ApiResponse.ofSuccess("Equipment removed successfully", updatedSubtask));
+    }
+
+    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
+    @GetMapping("/subtasks/{subtaskId}/workers/search")
+    public ResponseEntity<ApiResponse<List<WorkerSearchResultDto>>> searchWorkersForSubtask(@PathVariable Long subtaskId) {
+        try {
+            List<WorkerSearchResultDto> matchedWorkers = assignmentService.findBestMatchedWorkers(subtaskId);
+            return ResponseEntity.ok(ApiResponse.ofSuccess("Best matched workers fetched successfully", matchedWorkers));
+        } catch (ResourceNotFoundException ex) {
+            return new ResponseEntity<>(ApiResponse.ofError(ex.getMessage()), HttpStatus.NOT_FOUND);
+        } catch (Exception ex) {
+            return new ResponseEntity<>(ApiResponse.ofError("Failed to search workers: " + ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 //    @PostMapping("/assignments")
 //    @PreAuthorize("hasRole('SITE_SUPERVISOR')")

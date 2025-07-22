@@ -121,14 +121,36 @@ public class User extends BaseEntity implements UserDetails {
     private Set<Notification> notifications = new HashSet<>();
 
 
+    // In User.java
     public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
+        System.out.println("Checking availability for worker: " + this.getUsername() + " (ID: " + this.getId() + ")");
+        System.out.println("  Subtask Start: " + start + ", End: " + end);
+
+        // Debugging availability slots
+        System.out.println("  Worker Availability Slots (" + this.workerAvailabilitySlots.size() + " total):");
+        this.workerAvailabilitySlots.forEach(slot -> {
+            boolean covers = slot.covers(start, end);
+            System.out.println("    Slot: " + slot.getDate() + " " + slot.getStartTime() + "-" + slot.getEndTime() + " | Covers subtask time: " + covers);
+        });
+
         boolean hasSlot = workerAvailabilitySlots.stream()
                 .anyMatch(slot -> slot.covers(start, end));
+        System.out.println("  Result 'hasSlot' for worker " + this.getUsername() + ": " + hasSlot);
+
+        // Debugging worker assignments
+        System.out.println("  Worker Assignments (" + this.workerAssignments.size() + " total):");
+        this.workerAssignments.forEach(assignment -> {
+            boolean overlaps = assignment.overlapsWith(start, end);
+            System.out.println("    Assignment: " + assignment.getAssignmentStart() + "-" + assignment.getAssignmentEnd() + " | Overlaps subtask time: " + overlaps);
+        });
 
         boolean hasConflict = workerAssignments.stream()
                 .anyMatch(a -> a.overlapsWith(start, end));
+        System.out.println("  Result 'hasConflict' for worker " + this.getUsername() + ": " + hasConflict);
 
-        return hasSlot && !hasConflict;
+        boolean finalAvailability = hasSlot && !hasConflict;
+        System.out.println("  Final Availability for worker " + this.getUsername() + ": " + finalAvailability);
+        return finalAvailability;
     }
 
     // Required by Spring Security

@@ -7,11 +7,11 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Getter @Setter
-public class EquipmentAssignmentDto {
+public class WorkerAssignmentDto {
     private Long id;
-    private SimpleEquipmentDto equipment;
+    private SimpleUserDto worker;
     private SimpleUserDto assignedBy;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
+    private LocalDateTime assignmentStart;
+    private LocalDateTime assignmentEnd;
     private String notes;
 }
