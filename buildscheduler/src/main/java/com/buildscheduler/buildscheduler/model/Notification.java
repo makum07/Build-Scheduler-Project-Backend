@@ -28,6 +28,8 @@ public class Notification extends BaseEntity {
         MAINTENANCE,
         APPROVAL,
         SYSTEM,
-        EQUIPMENT_REQUEST
+        EQUIPMENT_REQUEST,
+        EQUIPMENT_REMOVAL,
+        EQUIPMENT_REQUEST_CANCELLED
     }
 }

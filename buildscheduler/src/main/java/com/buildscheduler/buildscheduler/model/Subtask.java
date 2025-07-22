@@ -11,7 +11,9 @@ import java.util.Set;
 
 @Entity
 @Table(name = "subtasks")
-@Data
+@Getter // Use @Getter and @Setter instead of @Data
+@Setter
+@ToString(callSuper = true) // Include BaseEntity toString
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
@@ -87,4 +89,26 @@ public class Subtask extends BaseEntity {
                 && status != TaskStatus.COMPLETED
                 && status != TaskStatus.CANCELLED;
     }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        // Use getClass() equality for safety with proxies, or check if o is instance of HibernateProxy
+        // If using proxies, 'o instanceof Subtask' might not work as expected with uninitialized proxies.
+        // Using o.getClass() != getClass() can be safer.
+        // For a proxy, getClass() returns the proxy class, not the entity class.
+        // A more robust check: if (o == null || (o instanceof HibernateProxy && !Hibernate.isInitialized(o))) return false;
+        // However, relying on ID for equality is the most common approach for JPA entities.
+        if (o == null || getClass() != o.getClass()) return false;
+        Subtask subtask = (Subtask) o;
+        // Crucially, use the ID for equality. If ID is null (new entity), rely on object identity.
+        return getId() != null && getId().equals(subtask.getId());
+    }
+
+    @Override
+    public final int hashCode() {
+        // Use the ID for hashCode. If ID is null, return 0 (or a constant).
+        return getId() != null ? getId().hashCode() : 0;
+    }
+
 }

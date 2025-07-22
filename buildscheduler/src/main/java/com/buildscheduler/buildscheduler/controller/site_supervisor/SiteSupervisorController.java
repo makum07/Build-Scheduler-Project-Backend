@@ -50,32 +50,51 @@ public class SiteSupervisorController {
             @PathVariable Long mainTaskId,
             @Valid @RequestBody SubtaskRequestDto dto
     ) {
-
         SubtaskResponseDto subtask = subtaskService.createSubtask(dto, mainTaskId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ofSuccess("Subtask created successfully", subtask));
     }
 
-//    @PutMapping("/subtasks/{subtaskId}")
-//    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
-//    public ResponseEntity<ApiResponse<SubtaskResponseDto>> updateSubtask(
-//            @PathVariable Long subtaskId,
-//            @Valid @RequestBody SubtaskRequestDto dto
-//    ) {
-//
-//        SubtaskResponseDto updatedSubtask = subtaskService.updateSubtask(subtaskId, dto);
-//        return ResponseEntity.ok(ApiResponse.ofSuccess("Subtask updated successfully", updatedSubtask));
-//    }
-//
-//    @DeleteMapping("/subtasks/{subtaskId}")
-//    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
-//    public ResponseEntity<ApiResponse<Void>> deleteSubtask(
-//            @PathVariable Long subtaskId
-//    ) {
-//        subtaskService.deleteSubtask(subtaskId);
-//        return ResponseEntity.ok(ApiResponse.ofSuccess("Subtask deleted successfully", null));
-//    }
-//
+    @PutMapping("/subtasks/{subtaskId}")
+    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
+    public ResponseEntity<ApiResponse<SubtaskResponseDto>> updateSubtask(
+            @PathVariable Long subtaskId,
+            @Valid @RequestBody SubtaskRequestDto dto
+    ) {
+        SubtaskResponseDto updatedSubtask = subtaskService.updateSubtask(subtaskId, dto);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Subtask updated successfully", updatedSubtask));
+    }
+
+
+    @DeleteMapping("/subtasks/{subtaskId}")
+    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
+    public ResponseEntity<ApiResponse<Void>> deleteSubtask(
+            @PathVariable Long subtaskId
+    ) {
+        subtaskService.deleteSubtask(subtaskId);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Subtask deleted successfully", null));
+    }
+
+    // Add endpoints for skill/equipment removal
+    @DeleteMapping("/subtasks/{subtaskId}/skills/{skillName}")
+    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
+    public ResponseEntity<ApiResponse<SubtaskResponseDto>> removeSkillFromSubtask(
+            @PathVariable Long subtaskId,
+            @PathVariable String skillName
+    ) {
+        SubtaskResponseDto updatedSubtask = subtaskService.removeSkillFromSubtask(subtaskId, skillName);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Skill removed successfully", updatedSubtask));
+    }
+
+    @DeleteMapping("/subtasks/{subtaskId}/equipment/{equipmentId}")
+    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
+    public ResponseEntity<ApiResponse<SubtaskResponseDto>> removeEquipmentFromSubtask(
+            @PathVariable Long subtaskId,
+            @PathVariable Long equipmentId
+    ) {
+        SubtaskResponseDto updatedSubtask = subtaskService.removeEquipmentFromSubtask(subtaskId, equipmentId);
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Equipment removed successfully", updatedSubtask));
+    }
 //    @PostMapping("/assignments")
 //    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
 //    public ResponseEntity<ApiResponse<AssignmentDto>> assignWorker(
