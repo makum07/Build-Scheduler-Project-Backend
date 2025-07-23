@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate; // Import LocalDate
 import java.util.HashSet;
 import java.util.Set;
 
@@ -55,6 +56,11 @@ public class Equipment extends BaseEntity {
     @Column(nullable = false)
     private Integer maintenanceIntervalDays = 30;
 
+    // --- NEW FIELD FOR MAINTENANCE TRACKING ---
+    @Column(nullable = true) // Can be null if no maintenance has been performed yet
+    private LocalDate lastMaintenanceDate;
+    // --- END NEW FIELD ---
+
     private String location;
 
     @Column(length = 1000)
@@ -75,25 +81,20 @@ public class Equipment extends BaseEntity {
     @JsonIgnore
     @ManyToMany(mappedBy = "equipmentNeeds")
     private Set<Subtask> requestedInSubtasks = new HashSet<>();
-//
-//    public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
-//        if (status != EquipmentStatus.AVAILABLE) {
-//            return false;
-//        }
-//
-//        boolean nonAvailConflict = nonAvailableSlots.stream()
-//                .anyMatch(slot -> slot.overlapsWith(start, end));
-//
-//        boolean assignmentConflict = assignments.stream()
-//                .anyMatch(assignment -> assignment.overlapsWith(start, end));
-//
-//        return !nonAvailConflict && !assignmentConflict;
-//    }
+
     // Add early exit in equipment check
-    public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
+    public boolean isAvailable(LocalDateTime start, LocalDateTime checkEnd) {
         if (status != EquipmentStatus.AVAILABLE) return false; // Early exit
 
-        return !nonAvailableSlots.stream().anyMatch(slot -> slot.overlapsWith(start, end))
-                && !assignments.stream().anyMatch(a -> a.overlapsWith(start, end));
+        return !nonAvailableSlots.stream().anyMatch(slot -> slot.overlapsWith(start, checkEnd))
+                && !assignments.stream().anyMatch(a -> a.overlapsWith(start, checkEnd));
+    }
+
+    public boolean isMaintenanceDue() {
+        if (lastMaintenanceDate == null) {
+            return false; // Or true, depending on your business rule for new equipment
+        }
+        LocalDate nextMaintenanceDate = lastMaintenanceDate.plusDays(maintenanceIntervalDays);
+        return !nextMaintenanceDate.isAfter(LocalDate.now()); // Due if nextMaintenanceDate is today or in the past
     }
 }
