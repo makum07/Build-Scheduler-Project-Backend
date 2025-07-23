@@ -2,6 +2,7 @@ package com.buildscheduler.buildscheduler.service.impl;
 
 import com.buildscheduler.buildscheduler.dto.site_supervisor.SubtaskRequestDto;
 import com.buildscheduler.buildscheduler.dto.site_supervisor.SubtaskResponseDto;
+import com.buildscheduler.buildscheduler.dto.site_supervisor.SubtaskStatusUpdateDto; // Import the new DTO
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.model.*;
 import com.buildscheduler.buildscheduler.repository.*;
@@ -194,6 +195,29 @@ public class SiteSupervisorSubtaskService {
         }
 
         subtaskRepository.delete(subtask);
+    }
+
+    //------------------------------------------------------------------------------------------------------------------
+    // New method to update subtask status
+    @Transactional
+    public SubtaskResponseDto updateSubtaskStatus(Long subtaskId, SubtaskStatusUpdateDto dto) {
+        User currentUser = getCurrentUser();
+        Subtask subtask = subtaskRepository.findById(subtaskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subtask not found with ID: " + subtaskId));
+
+        if (!subtask.getProject().getSiteSupervisor().equals(currentUser)) {
+            throw new AccessDeniedException("Not authorized to update this subtask's status");
+        }
+
+        try {
+            Subtask.TaskStatus newStatus = Subtask.TaskStatus.valueOf(dto.getStatus().toUpperCase());
+            subtask.setStatus(newStatus);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid subtask status: " + dto.getStatus());
+        }
+
+        Subtask updatedSubtask = subtaskRepository.save(subtask);
+        return convertToDto(updatedSubtask);
     }
 
     //------------------------------------------------------------------------------------------------------------------

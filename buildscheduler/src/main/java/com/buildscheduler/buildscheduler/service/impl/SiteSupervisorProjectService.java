@@ -17,9 +17,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate; // Import for LocalDate (used in isProjectOverdue)
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.Map; // Import for Map
 import java.util.stream.Collectors;
 
 @Service
@@ -58,12 +61,37 @@ public class SiteSupervisorProjectService {
         User currentUser = getCurrentUser();
         List<Project> projects = projectRepository.findBySiteSupervisor(currentUser);
 
+        if (projects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1. Collect all project IDs to fetch related main tasks and subtasks efficiently
+        List<Long> projectIds = projects.stream().map(Project::getId).toList();
+
+        // 2. Fetch all relevant main tasks for these projects in one go
+        List<MainTask> allMainTasks = mainTaskRepository.findByProjectIdIn(projectIds);
+        Map<Long, List<MainTask>> mainTasksByProjectId = allMainTasks.stream()
+                .collect(Collectors.groupingBy(mt -> mt.getProject().getId()));
+
+        // 3. Fetch all relevant subtasks for these main tasks in one go
+        List<Long> allMainTaskIds = allMainTasks.stream().map(MainTask::getId).toList();
+        List<Subtask> allSubtasks = Collections.emptyList();
+        if (!allMainTaskIds.isEmpty()) {
+            // NOTE: If you plan to use 'actual hours spent' for subtask completion,
+            // this repository call (or a subsequent one) needs to ensure workerAssignments
+            // are fetched (e.g., using @EntityGraph in SubtaskRepository) to avoid LazyInitializationException.
+            // For now, calculateSubtaskCompletion uses status-based percentages.
+            allSubtasks = subtaskRepository.findByMainTaskIdIn(allMainTaskIds);
+        }
+        Map<Long, List<Subtask>> subtasksByMainTaskId = allSubtasks.stream()
+                .collect(Collectors.groupingBy(st -> st.getMainTask().getId()));
+
         return projects.stream().map(project -> {
             ProjectResponseDto dto = new ProjectResponseDto();
             dto.setId(project.getId());
             dto.setTitle(project.getTitle());
             dto.setDescription(project.getDescription());
-            dto.setStatus(project.getStatus());  // Use enum directly
+            dto.setStatus(project.getStatus());
             dto.setStartDate(project.getStartDate());
             dto.setEndDate(project.getEndDate());
             dto.setEstimatedBudget(project.getEstimatedBudget());
@@ -79,9 +107,11 @@ public class SiteSupervisorProjectService {
                 dto.setProjectManagerName(project.getProjectManager().getUsername());
             }
 
-            // You can enhance this later
-            dto.setCompletionPercentage(0.0);
-            dto.setOverdue(false);
+            // Calculate and set completion percentage for each project
+            List<MainTask> currentProjectMainTasks = mainTasksByProjectId.getOrDefault(project.getId(), Collections.emptyList());
+            double projectCompletion = calculateProjectCompletion(currentProjectMainTasks, subtasksByMainTaskId);
+            dto.setCompletionPercentage(roundToTwoDecimalPlaces(projectCompletion));
+            dto.setOverdue(isProjectOverdue(project));
 
             return dto;
         }).collect(Collectors.toList());
@@ -100,6 +130,10 @@ public class SiteSupervisorProjectService {
             throw new AccessDeniedException("You are not authorized for this main task");
         }
 
+        // Ensure workerAssignments, requiredSkills, equipmentNeeds, etc., are fetched if convertToDetailDto
+        // accesses lazy collections outside a transactional context.
+        // For simplicity, assuming default fetching or calling from transactional context.
+        // A better approach might be: subtaskRepository.findSubtasksWithDetailsByMainTaskId(mainTaskId);
         List<Subtask> subtasks = subtaskRepository.findByMainTaskId(mainTaskId);
 
         return subtasks.stream()
@@ -182,5 +216,68 @@ public class SiteSupervisorProjectService {
         dto.setEquipment(convertToSimpleEquipmentDto(assignment.getEquipment()));
         dto.setAssignedBy(convertToSimpleUserDto(assignment.getAssignedBy()));
         return dto;
+    }
+
+    // ------------------------
+    // Completion Calculation Methods (Duplicated for independent calculation)
+    // These methods are taken from ProjectServiceImpl to allow SiteSupervisorProjectService
+    // to calculate project completion directly without depending on ProjectServiceImpl.
+    // ------------------------
+
+    private double calculateSubtaskCompletion(Subtask subtask) {
+        if (subtask == null || subtask.getStatus() == null) return 0.0;
+
+        // This uses the simplified status-based completion.
+        // If you need actual hours, ensure workerAssignments are eagerly fetched
+        // or accessible within a transaction when this method is called.
+        return switch (subtask.getStatus()) {
+            case COMPLETED -> 100.0;
+            case IN_PROGRESS -> 50.0;
+            case ASSIGNED -> 25.0;
+            case ON_HOLD -> 10.0;
+            case DELAYED -> 5.0;
+            default -> 0.0;
+        };
+    }
+
+    private double calculateMainTaskCompletion(List<Subtask> subtasks, MainTask mainTask) {
+        if (subtasks == null || subtasks.isEmpty()) {
+            // Fallback to MainTask status if no subtasks
+            return switch (mainTask.getStatus()) {
+                case COMPLETED -> 100.0;
+                case IN_PROGRESS -> 50.0;
+                case ON_HOLD -> 10.0;
+                case DELAYED -> 5.0;
+                default -> 0.0;
+            };
+        }
+
+        return subtasks.stream()
+                .mapToDouble(this::calculateSubtaskCompletion)
+                .average()
+                .orElse(0.0);
+    }
+
+    private double calculateProjectCompletion(List<MainTask> mainTasks, Map<Long, List<Subtask>> subtasksByMainTask) {
+        if (mainTasks == null || mainTasks.isEmpty()) {
+            return 0.0;
+        }
+
+        return mainTasks.stream()
+                .mapToDouble(mainTask -> calculateMainTaskCompletion(subtasksByMainTask.getOrDefault(mainTask.getId(), Collections.emptyList()), mainTask))
+                .average()
+                .orElse(0.0);
+    }
+
+    private boolean isProjectOverdue(Project project) {
+        if (project.getStatus() == Project.ProjectStatus.COMPLETED) {
+            return false;
+        }
+        LocalDate today = LocalDate.now();
+        return project.getEndDate() != null && project.getEndDate().isBefore(today);
+    }
+
+    private double roundToTwoDecimalPlaces(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 }

@@ -8,7 +8,7 @@ import com.buildscheduler.buildscheduler.exception.ConflictException;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.model.User;
 import com.buildscheduler.buildscheduler.repository.UserRepository;
-import com.buildscheduler.buildscheduler.response.ApiResponse;
+import com.buildscheduler.buildscheduler.response.ApiResponse; // Make sure this is the correct ApiResponse class
 import com.buildscheduler.buildscheduler.service.impl.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -69,6 +69,28 @@ public class SiteSupervisorController {
         SubtaskResponseDto updatedSubtask = subtaskService.updateSubtask(subtaskId, dto);
         return ResponseEntity.ok(ApiResponse.ofSuccess("Subtask updated successfully", updatedSubtask));
     }
+
+    // New Endpoint to update Subtask Status
+    //-------------------------------------------------------------------------
+    @PatchMapping("/subtasks/{subtaskId}/status")
+    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
+    public ResponseEntity<ApiResponse<SubtaskResponseDto>> updateSubtaskStatus(
+            @PathVariable Long subtaskId,
+            @Valid @RequestBody SubtaskStatusUpdateDto dto // Use the new DTO
+    ) {
+        try {
+            SubtaskResponseDto updatedSubtask = subtaskService.updateSubtaskStatus(subtaskId, dto);
+            return ResponseEntity.ok(ApiResponse.ofSuccess("Subtask status updated successfully", updatedSubtask));
+        } catch (ResourceNotFoundException ex) {
+            return new ResponseEntity<>(ApiResponse.ofError(ex.getMessage()), HttpStatus.NOT_FOUND);
+        } catch (IllegalArgumentException ex) {
+            return new ResponseEntity<>(ApiResponse.ofError(ex.getMessage()), HttpStatus.BAD_REQUEST);
+        } catch (Exception ex) {
+            // Log the exception
+            return new ResponseEntity<>(ApiResponse.ofError("Failed to update subtask status: " + ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    //-------------------------------------------------------------------------
 
 
     @DeleteMapping("/subtasks/{subtaskId}")
@@ -141,12 +163,13 @@ public class SiteSupervisorController {
     public ResponseEntity<ApiResponse<Void>> removeWorkerAssignment(@PathVariable Long assignmentId) {
         try {
             assignmentService.removeWorkerAssignment(assignmentId);
-            // Return 204 No Content for successful deletion
-            return new ResponseEntity<>(ApiResponse.ofSuccess("Worker assignment removed successfully"), HttpStatus.NO_CONTENT);
+            // Return 200 OK with a success message for successful deletion
+            return new ResponseEntity<>(ApiResponse.ofSuccess("Worker assignment removed successfully"), HttpStatus.OK);
         } catch (ResourceNotFoundException ex) {
             return new ResponseEntity<>(ApiResponse.ofError(ex.getMessage()), HttpStatus.NOT_FOUND);
         } catch (Exception ex) {
             // Log the exception
             return new ResponseEntity<>(ApiResponse.ofError("Failed to remove worker assignment: " + ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-}}
+    }
+}

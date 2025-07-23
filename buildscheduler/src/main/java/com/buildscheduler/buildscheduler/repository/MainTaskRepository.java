@@ -13,4 +13,6 @@ import java.util.List;
 public interface MainTaskRepository extends JpaRepository<MainTask, Long> {
     Page<MainTask> findByProject(Project project, Pageable pageable);
     List<MainTask> findByProject(Project project);
+
+    List<MainTask> findByProjectIdIn(List<Long> projectIds);
 }
