@@ -13,7 +13,6 @@ import java.util.List;
 
 @Entity
 @Table(name = "worker_availability_slots",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "date"}),
         indexes = {
                 @Index(name = "idx_avail_date", columnList = "date"),
                 @Index(name = "idx_avail_user_date", columnList = "user_id, date")
@@ -33,6 +32,10 @@ public class WorkerAvailabilitySlot extends BaseEntity {
 
     @Column(nullable = false)
     private LocalTime endTime;
+
+    public boolean overlaps(LocalTime otherStart, LocalTime otherEnd) {
+        return !otherEnd.isBefore(this.startTime) && !otherStart.isAfter(this.endTime);
+    }
 
     // Check if slot covers a specific time range
     public boolean covers(LocalDateTime start, LocalDateTime end) {

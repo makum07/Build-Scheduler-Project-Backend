@@ -4,6 +4,7 @@ import com.buildscheduler.buildscheduler.dto.project_manager.MainTaskResponseDto
 import com.buildscheduler.buildscheduler.dto.project_manager.ProjectResponseDto;
 import com.buildscheduler.buildscheduler.dto.project_manager.ProjectStructureResponse;
 import com.buildscheduler.buildscheduler.dto.site_supervisor.*;
+import com.buildscheduler.buildscheduler.exception.ConflictException;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.model.User;
 import com.buildscheduler.buildscheduler.repository.UserRepository;
@@ -29,12 +30,6 @@ public class SiteSupervisorController {
     private final SiteSupervisorProjectService projectService;
     private final SiteSupervisorSubtaskService subtaskService;
     private final SiteSupervisorAssignmentService assignmentService;
-
-//    private final SiteSupervisorEquipmentService equipmentService;
-//    private final ConflictDetectionService conflictService;
-//    private final UserRepository userRepository;
-
-
 
     @GetMapping("/projects")
     @PreAuthorize("hasRole('SITE_SUPERVISOR')")
@@ -118,54 +113,40 @@ public class SiteSupervisorController {
             return new ResponseEntity<>(ApiResponse.ofError("Failed to search workers: " + ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-//    @PostMapping("/assignments")
-//    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
-//    public ResponseEntity<ApiResponse<AssignmentDto>> assignWorker(
-//            @Valid @RequestBody AssignmentRequestDto dto
-//    ) {
-//        User supervisor = getCurrentUser();
-//        AssignmentDto assignment = assignmentService.assignWorker(dto, supervisor);
-//        return ResponseEntity.status(HttpStatus.CREATED)
-//                .body(ApiResponse.ofSuccess("Worker assigned successfully", assignment));
-//    }
-//
-//    @DeleteMapping("/assignments/{assignmentId}")
-//    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
-//    public ResponseEntity<ApiResponse<Void>> removeWorkerAssignment(
-//            @PathVariable Long assignmentId
-//    ) {
-//        User supervisor = getCurrentUser();
-//        assignmentService.removeWorkerAssignment(assignmentId, supervisor);
-//        return ResponseEntity.ok(ApiResponse.ofSuccess("Assignment removed successfully", null));
-//    }
-//
-//    @DeleteMapping("/equipment-assignments/{assignmentId}")
-//    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
-//    public ResponseEntity<ApiResponse<Void>> removeEquipmentAssignment(
-//            @PathVariable Long assignmentId
-//    ) {
-//        User supervisor = getCurrentUser();
-//        equipmentService.removeEquipmentAssignment(assignmentId, supervisor);
-//        return ResponseEntity.ok(ApiResponse.ofSuccess("Equipment assignment removed successfully", null));
-//    }
-//
-//    @GetMapping("/subtasks/{subtaskId}/qualified-workers")
-//    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
-//    public ResponseEntity<ApiResponse<List<WorkerAvailabilityDto>>> getQualifiedWorkers(
-//            @PathVariable Long subtaskId
-//    ) {
-//        User supervisor = getCurrentUser();
-//        List<WorkerAvailabilityDto> workers = assignmentService.getQualifiedAvailableWorkers(subtaskId, supervisor);
-//        return ResponseEntity.ok(ApiResponse.ofSuccess("Qualified workers fetched", workers));
-//    }
-//
-//    @GetMapping("/subtasks/{subtaskId}/conflicts")
-//    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
-//    public ResponseEntity<ApiResponse<Map<String, List<String>>>> checkSubtaskConflicts(
-//            @PathVariable Long subtaskId
-//    ) {
-//        User supervisor = getCurrentUser();
-//        Map<String, List<String>> conflicts = conflictService.detectSubtaskConflicts(subtaskId, supervisor);
-//        return ResponseEntity.ok(ApiResponse.ofSuccess("Conflict analysis completed", conflicts));
-//    }
-}
+    // Worker Assignment Endpoints
+    //-------------------------------------------------------------------------
+
+    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
+    @PostMapping("/subtasks/{subtaskId}/workers/assign")
+    public ResponseEntity<ApiResponse<Void>> assignWorkerToSubtask(
+            @PathVariable Long subtaskId,
+            @Valid @RequestBody AssignmentRequestDto assignmentRequest
+    ) {
+        try {
+            assignmentService.assignWorkerToSubtask(subtaskId, assignmentRequest);
+            // Return 201 Created for resource creation without a specific body
+            return new ResponseEntity<>(ApiResponse.ofSuccess("Worker assigned successfully"), HttpStatus.CREATED);
+        } catch (ResourceNotFoundException ex) {
+            return new ResponseEntity<>(ApiResponse.ofError(ex.getMessage()), HttpStatus.NOT_FOUND);
+        } catch (ConflictException ex) {
+            return new ResponseEntity<>(ApiResponse.ofError(ex.getMessage()), HttpStatus.CONFLICT);
+        } catch (Exception ex) {
+            // Log the exception for debugging in production
+            return new ResponseEntity<>(ApiResponse.ofError("Failed to assign worker: " + ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PreAuthorize("hasRole('SITE_SUPERVISOR')")
+    @DeleteMapping("/assignments/{assignmentId}")
+    public ResponseEntity<ApiResponse<Void>> removeWorkerAssignment(@PathVariable Long assignmentId) {
+        try {
+            assignmentService.removeWorkerAssignment(assignmentId);
+            // Return 204 No Content for successful deletion
+            return new ResponseEntity<>(ApiResponse.ofSuccess("Worker assignment removed successfully"), HttpStatus.NO_CONTENT);
+        } catch (ResourceNotFoundException ex) {
+            return new ResponseEntity<>(ApiResponse.ofError(ex.getMessage()), HttpStatus.NOT_FOUND);
+        } catch (Exception ex) {
+            // Log the exception
+            return new ResponseEntity<>(ApiResponse.ofError("Failed to remove worker assignment: " + ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+}}

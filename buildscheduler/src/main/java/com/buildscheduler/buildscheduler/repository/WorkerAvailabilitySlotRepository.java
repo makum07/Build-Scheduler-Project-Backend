@@ -15,14 +15,17 @@ import java.util.Optional;
 @Repository
 public interface WorkerAvailabilitySlotRepository extends JpaRepository<WorkerAvailabilitySlot, Long> {
 
+    // Used in updateAvailabilityForAssignment and reconstructAvailabilityAfterRemoval
+    List<WorkerAvailabilitySlot> findByUserIdAndDate(Long userId, LocalDate date);
+
     Optional<WorkerAvailabilitySlot> findByUserAndDate(User user, LocalDate date);
 
     @Query("""
-      SELECT s 
-        FROM WorkerAvailabilitySlot s 
-       WHERE s.user      = :user 
+      SELECT s
+        FROM WorkerAvailabilitySlot s
+       WHERE s.user      = :user
          AND s.date      = :date
-         AND s.startTime <= :startTime 
+         AND s.startTime <= :startTime
          AND s.endTime   >= :endTime
     """)
     Optional<WorkerAvailabilitySlot> findContainingSlot(
@@ -33,9 +36,9 @@ public interface WorkerAvailabilitySlotRepository extends JpaRepository<WorkerAv
     );
 
     @Query("""
-      SELECT s 
-        FROM WorkerAvailabilitySlot s 
-       WHERE s.user = :user 
+      SELECT s
+        FROM WorkerAvailabilitySlot s
+       WHERE s.user = :user
          AND s.date BETWEEN :start AND :end
     """)
     List<WorkerAvailabilitySlot> findByUserInDateRange(
