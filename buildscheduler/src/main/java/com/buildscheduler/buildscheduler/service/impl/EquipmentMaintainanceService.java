@@ -18,13 +18,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class EquipmentService {
+public class EquipmentMaintainanceService {
 
     private final EquipmentRepository equipmentRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService; // Inject NotificationService
 
-    public EquipmentService(EquipmentRepository equipmentRepository, UserRepository userRepository, NotificationService notificationService) {
+    public EquipmentMaintainanceService(EquipmentRepository equipmentRepository, UserRepository userRepository, NotificationService notificationService) {
         this.equipmentRepository = equipmentRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService; // Initialize NotificationService
@@ -38,7 +38,7 @@ public class EquipmentService {
         return (User) authentication.getPrincipal();
     }
 
-    @Transactional(readOnly = true)
+
     public List<EquipmentMaintenanceAlertDto> getMaintenanceAlertsForManager() {
         User currentUser = getCurrentUser();
         List<Equipment> managedEquipment = equipmentRepository.findByEquipmentManager(currentUser);
