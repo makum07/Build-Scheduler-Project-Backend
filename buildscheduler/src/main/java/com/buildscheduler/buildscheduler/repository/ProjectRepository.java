@@ -17,6 +17,8 @@ import java.util.Optional;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
+    List<Project> findByEquipmentManager(User equipmentManager);
+
     List<Project> findBySiteSupervisor(User siteSupervisor);
     @Query("SELECT mt FROM MainTask mt " +
             "LEFT JOIN FETCH mt.siteSupervisor " +
