@@ -65,7 +65,7 @@ public class EquipmentController {
 
     // --- Get All Equipment (for Admin/Project Manager) ---
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'ADMIN')") // Typically for higher-level roles
+    @PreAuthorize("isAuthenticated()")// Typically for higher-level roles
     public ResponseEntity<ApiResponse<List<EquipmentResponseDto>>> getAllEquipment() {
         List<EquipmentResponseDto> equipmentList = equipmentManagementService.getAllEquipment();
         return ResponseEntity.ok(ApiResponse.ofSuccess("All equipment fetched successfully", equipmentList));

@@ -15,6 +15,8 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true, exclude = {"nonAvailableSlots", "assignments", "requestedInSubtasks"}) // Exclude collections from equals/hashCode
+@ToString(callSuper = true, exclude = {"nonAvailableSlots", "assignments", "requestedInSubtasks"}) // Exclude collections from toString
 public class Equipment extends BaseEntity {
 
     public enum EquipmentStatus {
@@ -56,10 +58,8 @@ public class Equipment extends BaseEntity {
     @Column(nullable = false)
     private Integer maintenanceIntervalDays = 30;
 
-    // --- NEW FIELD FOR MAINTENANCE TRACKING ---
-    @Column(nullable = true) // Can be null if no maintenance has been performed yet
+    @Column(nullable = true)
     private LocalDate lastMaintenanceDate;
-    // --- END NEW FIELD ---
 
     private String location;
 
@@ -69,22 +69,28 @@ public class Equipment extends BaseEntity {
     @OneToMany(
             mappedBy = "equipment",
             cascade = { CascadeType.PERSIST, CascadeType.MERGE },
-            orphanRemoval = true,
+            orphanRemoval = true, // <<< Add this
             fetch = FetchType.LAZY
     )
     private Set<EquipmentNonAvailableSlot> nonAvailableSlots = new HashSet<>();
 
     @JsonIgnore
-    @OneToMany(mappedBy = "equipment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(
+            mappedBy = "equipment",
+            cascade = CascadeType.ALL, // CascadeType.ALL includes REMOVE
+            orphanRemoval = true,      // <<< Add this as well for assignments
+            fetch = FetchType.LAZY
+    )
     private Set<EquipmentAssignment> assignments = new HashSet<>();
 
-    @JsonIgnore
+
+    @JsonIgnore // You might want to consider excluding this from DTO if not directly needed
     @ManyToMany(mappedBy = "equipmentNeeds")
     private Set<Subtask> requestedInSubtasks = new HashSet<>();
 
     // Add early exit in equipment check
     public boolean isAvailable(LocalDateTime start, LocalDateTime checkEnd) {
-        if (status != EquipmentStatus.AVAILABLE) return false; // Early exit
+        if (status != EquipmentStatus.AVAILABLE) return false;
 
         return !nonAvailableSlots.stream().anyMatch(slot -> slot.overlapsWith(start, checkEnd))
                 && !assignments.stream().anyMatch(a -> a.overlapsWith(start, checkEnd));
@@ -92,9 +98,9 @@ public class Equipment extends BaseEntity {
 
     public boolean isMaintenanceDue() {
         if (lastMaintenanceDate == null) {
-            return false; // Or true, depending on your business rule for new equipment
+            return false;
         }
         LocalDate nextMaintenanceDate = lastMaintenanceDate.plusDays(maintenanceIntervalDays);
-        return !nextMaintenanceDate.isAfter(LocalDate.now()); // Due if nextMaintenanceDate is today or in the past
+        return !nextMaintenanceDate.isAfter(LocalDate.now());
     }
 }

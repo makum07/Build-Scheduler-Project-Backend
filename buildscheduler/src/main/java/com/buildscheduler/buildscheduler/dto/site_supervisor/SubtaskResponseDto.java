@@ -22,4 +22,5 @@ public class SubtaskResponseDto {
     private Set<String> requiredSkills = new HashSet<>();
     private Set<Long> equipmentIds = new HashSet<>();
     private String equipmentRequestNotes;
+
 }

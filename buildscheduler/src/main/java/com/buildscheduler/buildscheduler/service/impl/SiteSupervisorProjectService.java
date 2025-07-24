@@ -125,11 +125,6 @@ public class SiteSupervisorProjectService {
         MainTask mainTask = mainTaskRepository.findById(mainTaskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Main task not found with ID: " + mainTaskId));
 
-        User currentUser = getCurrentUser();
-        if (!mainTask.getProject().getSiteSupervisor().equals(currentUser)) {
-            throw new AccessDeniedException("You are not authorized for this main task");
-        }
-
         // Ensure workerAssignments, requiredSkills, equipmentNeeds, etc., are fetched if convertToDetailDto
         // accesses lazy collections outside a transactional context.
         // For simplicity, assuming default fetching or calling from transactional context.

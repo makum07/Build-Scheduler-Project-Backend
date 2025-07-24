@@ -52,8 +52,6 @@ public class SecurityConfig {
                                 "/api/profile/**",
                                 "/api/user/**"
                         ).permitAll()
-                        // Add role-specific access
-                        .requestMatchers("/api/site-supervisor/**").hasRole("SITE_SUPERVISOR")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session ->

@@ -41,4 +41,6 @@ public class EquipmentResponseDto {
     // You might also expose if it's maintenance due as a separate flag,
     // as it's a "warning" rather than a strict "operational status"
     private boolean maintenanceDue;
+    private Set<EquipmentNonAvailableSlotResponseDto> nonAvailableSlots;
+    private Set<EquipmentAssignmentResponseDto> assignments;
 }
