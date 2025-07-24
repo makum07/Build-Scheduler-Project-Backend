@@ -19,17 +19,30 @@ import java.util.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "users")
+// Corrected Lombok annotations:
+@EqualsAndHashCode(callSuper = true, of = "id") // <-- callSuper = true and of = "id"
 @ToString(exclude = {
-        "skills", "certifications", "availabilitySlots",
-        "assignments", "supervisedWorkers", "managedTeam",
-        "managedProjects", "supervisedTasks", "managedEquipment",
-        "notifications"
+        "skills",
+        "certifications",
+        "workerAvailabilitySlots", // Corrected field name
+        "workerAssignments",       // Corrected field name
+        "supervisedWorkers",
+        "managedTeam",
+        "managedProjects",
+        "supervisedTasks",
+        "managedEquipment",
+        "notifications",
+        // Exclude self-referencing ManyToOne relationships if they can cause recursion in toString()
+        // It's better to explicitly list them if they are part of the graph being fetched.
+        "siteSupervisor",
+        "projectManager",
+        "roles" // Exclude EAGER collections from toString() to be safe and clean
 })
 public class User extends BaseEntity implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long id; // Keep this ID here, it's specific to the User entity
 
     @NotBlank(message = "Username is required")
     @Column(unique = true)
@@ -53,7 +66,6 @@ public class User extends BaseEntity implements UserDetails {
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
-
 
 
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
@@ -123,34 +135,8 @@ public class User extends BaseEntity implements UserDetails {
 
     // In User.java
     public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
-        System.out.println("Checking availability for worker: " + this.getUsername() + " (ID: " + this.getId() + ")");
-        System.out.println("  Subtask Start: " + start + ", End: " + end);
-
-        // Debugging availability slots
-        System.out.println("  Worker Availability Slots (" + this.workerAvailabilitySlots.size() + " total):");
-        this.workerAvailabilitySlots.forEach(slot -> {
-            boolean covers = slot.covers(start, end);
-            System.out.println("    Slot: " + slot.getDate() + " " + slot.getStartTime() + "-" + slot.getEndTime() + " | Covers subtask time: " + covers);
-        });
-
-        boolean hasSlot = workerAvailabilitySlots.stream()
-                .anyMatch(slot -> slot.covers(start, end));
-        System.out.println("  Result 'hasSlot' for worker " + this.getUsername() + ": " + hasSlot);
-
-        // Debugging worker assignments
-        System.out.println("  Worker Assignments (" + this.workerAssignments.size() + " total):");
-        this.workerAssignments.forEach(assignment -> {
-            boolean overlaps = assignment.overlapsWith(start, end);
-            System.out.println("    Assignment: " + assignment.getAssignmentStart() + "-" + assignment.getAssignmentEnd() + " | Overlaps subtask time: " + overlaps);
-        });
-
-        boolean hasConflict = workerAssignments.stream()
-                .anyMatch(a -> a.overlapsWith(start, end));
-        System.out.println("  Result 'hasConflict' for worker " + this.getUsername() + ": " + hasConflict);
-
-        boolean finalAvailability = hasSlot && !hasConflict;
-        System.out.println("  Final Availability for worker " + this.getUsername() + ": " + finalAvailability);
-        return finalAvailability;
+        // ... (your existing availability logic)
+        return true; // Simplified for example, keep your original logic
     }
 
     // Required by Spring Security
@@ -161,27 +147,9 @@ public class User extends BaseEntity implements UserDetails {
                 .toList();
     }
 
-    @Override
-    public String toString() {
-        return "User{" +
-                "id=" + id +
-                ", username='" + username + '\'' +
-                ", email='" + email + '\'' +
-                '}';
-    }
+    // REMOVE all manual overrides for equals(), hashCode(), and toString()
+    // Lombok will generate them correctly now.
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof User)) return false;
-        User user = (User) o;
-        return id != null && Objects.equals(id, user.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }

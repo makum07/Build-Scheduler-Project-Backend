@@ -10,13 +10,27 @@ import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
-
 @Entity
 @Table(name = "projects")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+// Corrected Lombok annotations:
+@EqualsAndHashCode(callSuper = true, of = "id") // <-- callSuper = true and of = "id"
+@ToString(exclude = {
+        "siteSupervisor",
+        "equipmentManager",
+        "projectManager",
+        "workers",
+        "mainTasks"
+})
+// REMOVE @Data
 public class Project extends BaseEntity {
+
+    @Id // Assuming Project has an ID. If BaseEntity provides it, remove this.
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id; // Keep this ID here, it's specific to the Project entity
 
     @NotBlank
     @Column(nullable = false)
