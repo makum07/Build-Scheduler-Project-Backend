@@ -2,12 +2,16 @@ package com.buildscheduler.buildscheduler.service.impl;
 
 import com.buildscheduler.buildscheduler.dto.equipment_manager.EquipmentRequestDto;
 import com.buildscheduler.buildscheduler.dto.equipment_manager.EquipmentResponseDto;
-import com.buildscheduler.buildscheduler.dto.worker.SimpleUserDto; // Ensure this DTO exists
+import com.buildscheduler.buildscheduler.dto.worker.SimpleUserDto;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.model.Equipment;
+import com.buildscheduler.buildscheduler.model.EquipmentAssignment; // Import EquipmentAssignment
+import com.buildscheduler.buildscheduler.model.EquipmentNonAvailableSlot; // Import EquipmentNonAvailableSlot
+import com.buildscheduler.buildscheduler.model.Notification; // Import Notification (if using NotificationService)
 import com.buildscheduler.buildscheduler.model.User;
 import com.buildscheduler.buildscheduler.repository.EquipmentRepository;
 import com.buildscheduler.buildscheduler.repository.UserRepository;
+import com.buildscheduler.buildscheduler.service.NotificationService; // Import NotificationService (if using it here)
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -15,15 +19,21 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime; // Import LocalDateTime
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Set; // Import Set
 
 @Service
-@RequiredArgsConstructor // Lombok annotation for constructor injection
+@RequiredArgsConstructor
 public class EquipmentManagementService {
 
     private final EquipmentRepository equipmentRepository;
-    private final UserRepository userRepository; // To fetch User details if needed
+    private final UserRepository userRepository;
+    // If you plan to consolidate maintenance alerts here, uncomment the next line:
+    // private final NotificationService notificationService;
+
 
     // Helper method to get the current authenticated user
     private User getCurrentUser() {
@@ -31,8 +41,6 @@ public class EquipmentManagementService {
         if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
             throw new ResourceNotFoundException("User not authenticated");
         }
-        // It's good practice to re-fetch the user from the DB to ensure it's managed
-        // and avoid LazyInitializationException if you access collections.
         return userRepository.findById(((User) authentication.getPrincipal()).getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "ID", ((User) authentication.getPrincipal()).getId()));
     }
@@ -44,18 +52,14 @@ public class EquipmentManagementService {
     @Transactional
     public EquipmentResponseDto createEquipment(EquipmentRequestDto dto) {
         User currentUser = getCurrentUser();
-        // Ensure the current user is an EQUIPMENT_MANAGER if you have specific role checks here
-        // (though @PreAuthorize in controller will handle primary check)
-        // if (!currentUser.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_EQUIPMENT_MANAGER"))) {
-        //     throw new AccessDeniedException("Only Equipment Managers can add equipment.");
-        // }
 
         Equipment equipment = new Equipment();
         mapDtoToEntity(dto, equipment);
         equipment.setEquipmentManager(currentUser); // Assign current user as manager
-        equipment.setStatus(Equipment.EquipmentStatus.AVAILABLE); // Default status for new equipment
+        equipment.setStatus(Equipment.EquipmentStatus.AVAILABLE); // Default base status for new equipment
 
         Equipment savedEquipment = equipmentRepository.save(equipment);
+        // collections will be empty for newly created equipment, so dynamic status will be base status
         return mapEntityToDto(savedEquipment);
     }
 
@@ -76,12 +80,16 @@ public class EquipmentManagementService {
         }
 
         mapDtoToEntity(dto, existingEquipment); // Update fields from DTO
-        // Allow status update if provided in DTO
+        // Allow status update for the *base* status if provided in DTO
         if (dto.getStatus() != null) {
             existingEquipment.setStatus(dto.getStatus());
         }
 
         Equipment updatedEquipment = equipmentRepository.save(existingEquipment);
+        // For update, ensure lazy collections are loaded before mapping
+        // (if not using @EntityGraph on findById, this would be needed here)
+        // updatedEquipment.getNonAvailableSlots().size();
+        // updatedEquipment.getAssignments().size();
         return mapEntityToDto(updatedEquipment);
     }
 
@@ -110,12 +118,10 @@ public class EquipmentManagementService {
      */
     @Transactional(readOnly = true)
     public EquipmentResponseDto getEquipmentById(Long equipmentId) {
+        // @EntityGraph on findById in repository handles eager loading
         Equipment equipment = equipmentRepository.findById(equipmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Equipment", "id", equipmentId));
 
-        // Consider implementing an authorization check here if not already handled by @PreAuthorize
-        // e.g., if only equipment managers should see their own equipment, or project managers
-        // only for projects they are associated with.
         return mapEntityToDto(equipment);
     }
 
@@ -125,7 +131,9 @@ public class EquipmentManagementService {
     @Transactional(readOnly = true)
     public List<EquipmentResponseDto> getMyManagedEquipment() {
         User currentUser = getCurrentUser();
+        // @EntityGraph on findByEquipmentManager in repository handles eager loading
         List<Equipment> equipment = equipmentRepository.findByEquipmentManager(currentUser);
+
         return equipment.stream()
                 .map(this::mapEntityToDto)
                 .collect(Collectors.toList());
@@ -137,6 +145,7 @@ public class EquipmentManagementService {
      */
     @Transactional(readOnly = true)
     public List<EquipmentResponseDto> getAllEquipment() {
+        // @EntityGraph on findAll in repository handles eager loading
         List<Equipment> equipment = equipmentRepository.findAll();
         return equipment.stream()
                 .map(this::mapEntityToDto)
@@ -155,7 +164,6 @@ public class EquipmentManagementService {
         equipment.setLastMaintenanceDate(dto.getLastMaintenanceDate()); // Can be null
         equipment.setLocation(dto.getLocation());
         equipment.setNotes(dto.getNotes());
-        // Status is handled separately as it might be null in request DTO
     }
 
     private EquipmentResponseDto mapEntityToDto(Equipment equipment) {
@@ -165,13 +173,18 @@ public class EquipmentManagementService {
         dto.setModel(equipment.getModel());
         dto.setSerialNumber(equipment.getSerialNumber());
         dto.setType(equipment.getType());
-        dto.setStatus(equipment.getStatus());
+
+        // --- DYNAMIC STATUS CALCULATION ---
+        dto.setCurrentOperationalStatus(calculateCurrentOperationalStatus(equipment));
+        // --- END DYNAMIC STATUS CALCULATION ---
+
         dto.setPurchasePrice(equipment.getPurchasePrice());
         dto.setWarrantyMonths(equipment.getWarrantyMonths());
         dto.setMaintenanceIntervalDays(equipment.getMaintenanceIntervalDays());
         dto.setLastMaintenanceDate(equipment.getLastMaintenanceDate());
         dto.setLocation(equipment.getLocation());
         dto.setNotes(equipment.getNotes());
+        dto.setMaintenanceDue(equipment.isMaintenanceDue()); // Expose maintenance alert status as a separate flag
 
         if (equipment.getEquipmentManager() != null) {
             SimpleUserDto managerDto = new SimpleUserDto();
@@ -181,5 +194,55 @@ public class EquipmentManagementService {
             dto.setEquipmentManager(managerDto);
         }
         return dto;
+    }
+
+    /**
+     * Calculates the current operational status of the equipment dynamically.
+     * Prioritizes statuses that indicate immediate unavailability or specific states.
+     * Order of precedence:
+     * 1. DECOMMISSIONED (Highest priority as it's a permanent state)
+     * 2. UNDER_MAINTENANCE (If currently in a maintenance non-available slot)
+     * 3. IN_USE (If currently assigned to a task)
+     * 4. AVAILABLE (Base status, or if it's maintenance due but not actively in maintenance)
+     */
+    private Equipment.EquipmentStatus calculateCurrentOperationalStatus(Equipment equipment) {
+        // Get the base status from the entity (e.g., set during creation or manual update)
+        Equipment.EquipmentStatus baseStatus = equipment.getStatus();
+
+        // 1. Check for DECOMMISSIONED status (Highest priority override)
+        if (baseStatus == Equipment.EquipmentStatus.DECOMMISSIONED) {
+            return Equipment.EquipmentStatus.DECOMMISSIONED;
+        }
+
+        LocalDateTime now = LocalDateTime.now(); // Current time
+
+        // 2. Check for Maintenance Non-Availability Slots
+        Set<EquipmentNonAvailableSlot> nonAvailableSlots = equipment.getNonAvailableSlots();
+        if (nonAvailableSlots != null) { // Defensive check
+            boolean inMaintenanceSlot = nonAvailableSlots.stream()
+                    .anyMatch(slot -> slot.getType() == EquipmentNonAvailableSlot.NonAvailabilityType.MAINTENANCE &&
+                            slot.overlapsWith(now, now)); // Check for overlap with current moment
+
+            if (inMaintenanceSlot) {
+                return Equipment.EquipmentStatus.UNDER_MAINTENANCE;
+            }
+        }
+
+
+        // 3. Check for Active Assignments (IN_USE)
+        Set<EquipmentAssignment> assignments = equipment.getAssignments();
+        if (assignments != null) { // Defensive check
+            boolean currentlyAssigned = assignments.stream()
+                    .anyMatch(assignment -> assignment.overlapsWith(now, now)); // Check for overlap with current moment
+
+            if (currentlyAssigned) {
+                return Equipment.EquipmentStatus.IN_USE;
+            }
+        }
+
+        // 4. Fallback to the base status
+        // At this point, it's not decommissioned, not in a maintenance slot, and not currently assigned.
+        // So, return its base status, which could be AVAILABLE or some other static status.
+        return baseStatus;
     }
 }
