@@ -149,7 +149,11 @@ public class User extends BaseEntity implements UserDetails {
 
     // REMOVE all manual overrides for equals(), hashCode(), and toString()
     // Lombok will generate them correctly now.
-
+    // Helper method to check roles
+    public boolean hasRole(String roleName) {
+        return this.getRoles() != null && this.getRoles().stream()
+                .anyMatch(role -> role.getName().equals(roleName));
+    }
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }

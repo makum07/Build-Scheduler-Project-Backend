@@ -35,17 +35,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mt.equipmentManager " + // Fetch equipment manager for main task
             "LEFT JOIN FETCH mt.siteSupervisor " + // Fetch site supervisor for main task
             "LEFT JOIN FETCH sub.project " + // Fetch project for subtask
-            "LEFT JOIN FETCH u.siteSupervisor ss " + // Direct ManyToOne relationships
-            "LEFT JOIN FETCH u.projectManager pm " + // Direct ManyToOne relationships
+            "LEFT JOIN FETCH u.siteSupervisor ss " + // Direct ManyToOne relationships (who *this* user reports to)
+            "LEFT JOIN FETCH u.projectManager pm " + // Direct ManyToOne relationships (who *this* user reports to)
             "LEFT JOIN FETCH u.managedTeam mdt " + // OneToMany relationships (ProjectManager's managed team)
             "LEFT JOIN FETCH u.managedProjects mpr " + // ProjectManager's managed projects
-            "LEFT JOIN FETCH mpr.projectManager " + // Manager of the managed project
-            "LEFT JOIN FETCH mpr.siteSupervisor " + // SiteSupervisor of the managed project
-            "LEFT JOIN FETCH mpr.equipmentManager " + // EquipmentManager of the managed project
+            "LEFT JOIN FETCH mpr.projectManager " + // Manager of the managed project (needed for ManagedProjects list)
+            "LEFT JOIN FETCH mpr.siteSupervisor " + // SiteSupervisor of the managed project (needed for ManagedProjects list)
+            "LEFT JOIN FETCH mpr.equipmentManager " + // EquipmentManager of the managed project (needed for ManagedProjects list)
             "LEFT JOIN FETCH mpr.workers " + // Workers assigned to the project itself (if applicable)
-            "LEFT JOIN FETCH mpr.mainTasks " + // Main tasks of the project
+            "LEFT JOIN FETCH mpr.mainTasks mpr_mt " + // Main tasks of the managed project
+            "LEFT JOIN FETCH mpr_mt.subtasks mpr_sub " + // Subtasks of main tasks of managed project
+            "LEFT JOIN FETCH mpr_sub.workerAssignments mpr_wa " + // Worker assignments of subtasks of managed project
             "LEFT JOIN FETCH u.supervisedWorkers sw " + // SiteSupervisor's supervised workers
             "LEFT JOIN FETCH u.supervisedTasks st " + // SiteSupervisor's supervised tasks
+            "LEFT JOIN FETCH st.subtasks st_sub " + // Subtasks of supervised tasks
+            "LEFT JOIN FETCH st_sub.workerAssignments st_wa " + // Worker assignments of subtasks of supervised tasks
             "LEFT JOIN FETCH u.managedEquipment me " + // EquipmentManager's managed equipment
             "WHERE u.id = :userId")
     Optional<User> findFullProfileById(@Param("userId") Long userId);
@@ -75,10 +79,27 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mpr.siteSupervisor " +
             "LEFT JOIN FETCH mpr.equipmentManager " +
             "LEFT JOIN FETCH mpr.workers " +
-            "LEFT JOIN FETCH mpr.mainTasks " +
+            "LEFT JOIN FETCH mpr.mainTasks mpr_mt " +
+            "LEFT JOIN FETCH mpr_mt.subtasks mpr_sub " +
+            "LEFT JOIN FETCH mpr_sub.workerAssignments mpr_wa " +
             "LEFT JOIN FETCH u.supervisedWorkers sw " +
             "LEFT JOIN FETCH u.supervisedTasks st " +
+            "LEFT JOIN FETCH st.subtasks st_sub " +
+            "LEFT JOIN FETCH st_sub.workerAssignments st_wa " +
             "LEFT JOIN FETCH u.managedEquipment me " +
             "WHERE u.username = :username")
     Optional<User> findFullProfileByUsername(@Param("username") String username);
+
+    /**
+     * Custom query to find the Project Managers and Site Supervisors for a given worker.
+     * This helps populate the 'worksUnder' field for a worker.
+     * It looks for projects associated with the subtasks a worker is assigned to.
+     */
+    @Query("SELECT DISTINCT p.projectManager, p.siteSupervisor " +
+            "FROM WorkerAssignment wa " +
+            "JOIN wa.subtask s " +
+            "JOIN s.mainTask mt " +
+            "JOIN mt.project p " +
+            "WHERE wa.worker.id = :workerId")
+    List<Object[]> findProjectManagersAndSiteSupervisorsForWorker(@Param("workerId") Long workerId);
 }
