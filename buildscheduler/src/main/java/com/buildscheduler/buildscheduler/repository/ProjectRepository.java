@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set; // Import Set
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
@@ -20,9 +21,34 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByEquipmentManager(User equipmentManager);
 
     List<Project> findBySiteSupervisor(User siteSupervisor);
+
+    // New query for Site Supervisor: Get projects, their PMs, and workers
+    @Query("SELECT DISTINCT p FROM Project p " +
+            "LEFT JOIN FETCH p.projectManager pm " +
+            "LEFT JOIN FETCH p.workers w " +
+            "LEFT JOIN FETCH p.mainTasks mt " + // Eagerly fetch MainTasks
+            "LEFT JOIN FETCH mt.subtasks st " + // Eagerly fetch Subtasks
+            "LEFT JOIN FETCH st.workerAssignments wa " + // Eagerly fetch WorkerAssignments
+            "LEFT JOIN FETCH wa.worker " + // Eagerly fetch Workers within assignments
+            "WHERE p.siteSupervisor.id = :siteSupervisorId")
+    Set<Project> findProjectsBySiteSupervisorId(@Param("siteSupervisorId") Long siteSupervisorId);
+
+    // New query for Project Manager: Get projects, their Site Supervisors, EMs, and workers
+    @Query("SELECT DISTINCT p FROM Project p " +
+            "LEFT JOIN FETCH p.siteSupervisor ss " +
+            "LEFT JOIN FETCH p.equipmentManager em " +
+            "LEFT JOIN FETCH p.workers w " +
+            "LEFT JOIN FETCH p.mainTasks mt " + // Eagerly fetch MainTasks
+            "LEFT JOIN FETCH mt.subtasks st " + // Eagerly fetch Subtasks
+            "LEFT JOIN FETCH st.workerAssignments wa " + // Eagerly fetch WorkerAssignments
+            "LEFT JOIN FETCH wa.worker " + // Eagerly fetch Workers within assignments
+            "WHERE p.projectManager.id = :projectManagerId")
+    Set<Project> findProjectsByProjectManagerId(@Param("projectManagerId") Long projectManagerId);
+
+
     @Query("SELECT mt FROM MainTask mt " +
             "LEFT JOIN FETCH mt.siteSupervisor " +
-            "LEFT JOIN FETCH mt.equipmentManager " + // ✅ added
+            "LEFT JOIN FETCH mt.equipmentManager " +
             "WHERE mt.project.id = :projectId " +
             "ORDER BY mt.id")
     List<MainTask> findMainTasksByProjectId(@Param("projectId") Long projectId);
@@ -168,7 +194,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     @Deprecated
     @Query("SELECT DISTINCT p FROM Project p " +
             "LEFT JOIN FETCH p.mainTasks mt " +
-            "LEFT JOIN FETCH mt.subtasks st " +
+            "LEFT JOIN FETCH mt.subtasks st " + // CORRECTED THIS LINE
             "LEFT JOIN FETCH p.projectManager pm " +
             "LEFT JOIN FETCH p.siteSupervisor ss " +
             "LEFT JOIN FETCH p.equipmentManager em " +

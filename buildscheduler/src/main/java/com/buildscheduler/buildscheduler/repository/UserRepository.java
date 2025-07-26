@@ -25,21 +25,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH wa.assignedBy ab " +
             "LEFT JOIN FETCH wa.subtask sub " +
             "LEFT JOIN FETCH sub.mainTask mt " +
-            "LEFT JOIN FETCH mt.project mp_sub " + // Alias for subtask's project
             "LEFT JOIN FETCH mt.equipmentManager " +
             "LEFT JOIN FETCH mt.siteSupervisor " +
-            "LEFT JOIN FETCH sub.project sub_p " + // Alias for subtask's direct project
             "LEFT JOIN FETCH u.siteSupervisor ss " +
-            "LEFT JOIN FETCH u.projectManager pm_user " + // Alias for user's direct project manager
-            "LEFT JOIN FETCH u.managedTeam mdt " + // Project Manager's directly managed team (from users.project_manager_id)
-            "LEFT JOIN FETCH u.managedProjects mpr " + // Project Manager's managed projects
-            "LEFT JOIN FETCH mpr.siteSupervisor mpr_ss " + // Site Supervisors of managed projects
-            "LEFT JOIN FETCH mpr.equipmentManager mpr_em " + // Equipment Managers of managed projects
-            "LEFT JOIN FETCH mpr.workers mpr_wrk " + // Workers directly assigned to managed projects
-            "LEFT JOIN FETCH mpr.mainTasks mpr_mt " + // Main tasks of managed projects
-            "LEFT JOIN FETCH mpr_mt.subtasks mpr_sub " + // Subtasks of main tasks of managed projects
-            "LEFT JOIN FETCH mpr_sub.workerAssignments mpr_wa " + // Worker assignments for subtasks in managed projects
-            "LEFT JOIN FETCH mpr_wa.worker mpr_wa_wrk " + // Workers in assignments of managed project subtasks
+            "LEFT JOIN FETCH u.projectManager pm_user " +
+            "LEFT JOIN FETCH u.managedTeam mdt " +
+            "LEFT JOIN FETCH u.managedProjects mpr " + // Still fetch direct managed projects for PMs
             "LEFT JOIN FETCH u.supervisedWorkers sw " +
             "LEFT JOIN FETCH u.supervisedTasks st " +
             "LEFT JOIN FETCH st.subtasks st_sub " +
@@ -57,21 +48,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH wa.assignedBy ab " +
             "LEFT JOIN FETCH wa.subtask sub " +
             "LEFT JOIN FETCH sub.mainTask mt " +
-            "LEFT JOIN FETCH mt.project mp_sub " +
             "LEFT JOIN FETCH mt.equipmentManager " +
             "LEFT JOIN FETCH mt.siteSupervisor " +
-            "LEFT JOIN FETCH sub.project sub_p " +
             "LEFT JOIN FETCH u.siteSupervisor ss " +
             "LEFT JOIN FETCH u.projectManager pm_user " +
             "LEFT JOIN FETCH u.managedTeam mdt " +
-            "LEFT JOIN FETCH u.managedProjects mpr " +
-            "LEFT JOIN FETCH mpr.siteSupervisor mpr_ss " +
-            "LEFT JOIN FETCH mpr.equipmentManager mpr_em " +
-            "LEFT JOIN FETCH mpr.workers mpr_wrk " +
-            "LEFT JOIN FETCH mpr.mainTasks mpr_mt " +
-            "LEFT JOIN FETCH mpr_mt.subtasks mpr_sub " +
-            "LEFT JOIN FETCH mpr_sub.workerAssignments mpr_wa " +
-            "LEFT JOIN FETCH mpr_wa.worker mpr_wa_wrk " +
+            "LEFT JOIN FETCH u.managedProjects mpr " + // Still fetch direct managed projects for PMs
             "LEFT JOIN FETCH u.supervisedWorkers sw " +
             "LEFT JOIN FETCH u.supervisedTasks st " +
             "LEFT JOIN FETCH st.subtasks st_sub " +

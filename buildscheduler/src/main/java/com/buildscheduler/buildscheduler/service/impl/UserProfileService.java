@@ -7,6 +7,7 @@ import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.mapper.*;
 import com.buildscheduler.buildscheduler.model.*;
 import com.buildscheduler.buildscheduler.repository.NotificationRepository;
+import com.buildscheduler.buildscheduler.repository.ProjectRepository; // Import ProjectRepository
 import com.buildscheduler.buildscheduler.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -16,10 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.HashSet; // Import for HashSet
+import java.util.HashSet;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +27,7 @@ public class UserProfileService {
 
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final ProjectRepository projectRepository; // Inject ProjectRepository
     private final UserMapper userMapper;
     private final NotificationMapper notificationMapper;
     private final ProjectMapper projectMapper;
@@ -61,7 +62,8 @@ public class UserProfileService {
         if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
             throw new ResourceNotFoundException("User not authenticated");
         }
-        return userRepository.findById(((User) authentication.getPrincipal()).getId()) // Re-fetch to ensure it's a managed entity
+        // Fetch full profile, including eager loads defined in userRepository.findFullProfileById
+        return userRepository.findFullProfileById(((User) authentication.getPrincipal()).getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated User", "id", ((User) authentication.getPrincipal()).getId()));
     }
 
@@ -78,16 +80,19 @@ public class UserProfileService {
         dto.setWorkerAvailabilitySlots(Collections.emptyList());
         dto.setWorksUnder(Collections.emptyList());
 
-        // For Project Managers
+        // --- Logic for Project Managers ---
         if (user.hasRole("ROLE_PROJECT_MANAGER")) {
-            if (user.getManagedProjects() != null && !user.getManagedProjects().isEmpty()) {
-                dto.setManagedProjects(user.getManagedProjects().stream()
+            // Fetch projects managed by this Project Manager using ProjectRepository
+            Set<Project> managedProjects = projectRepository.findProjectsByProjectManagerId(user.getId());
+
+            if (managedProjects != null && !managedProjects.isEmpty()) {
+                dto.setManagedProjects(managedProjects.stream()
                         .map(projectMapper::toFullProjectDto)
                         .collect(Collectors.toList()));
 
                 // Populate managedTeam from managedProjects
                 Set<UserInfoDto> managedTeamSet = new HashSet<>();
-                user.getManagedProjects().forEach(project -> {
+                managedProjects.forEach(project -> {
                     // Add Site Supervisor of the project
                     if (project.getSiteSupervisor() != null) {
                         managedTeamSet.add(new UserInfoDto(project.getSiteSupervisor().getId(),
@@ -136,28 +141,95 @@ public class UserProfileService {
             }
         }
 
-        // For Site Supervisors
+        // --- Logic for Site Supervisors ---
         if (user.hasRole("ROLE_SITE_SUPERVISOR")) {
-            if (user.getSupervisedTasks() != null && !user.getSupervisedTasks().isEmpty()) {
-                dto.setSupervisedTasks(user.getSupervisedTasks().stream()
-                        .map(mainTaskMapper::toResponseDto)
-                        .collect(Collectors.toList()));
+            // Fetch projects where this user is the Site Supervisor using ProjectRepository
+            Set<Project> projectsSupervised = projectRepository.findProjectsBySiteSupervisorId(user.getId());
+
+            Set<UserInfoDto> worksUnderSet = new HashSet<>();
+            Set<UserInfoDto> supervisedWorkersSet = new HashSet<>();
+            Set<MainTask> supervisedTasksSet = new HashSet<>(); // Collect supervised tasks here
+
+            if (projectsSupervised != null && !projectsSupervised.isEmpty()) {
+                projectsSupervised.forEach(project -> {
+                    // Add Project Manager of the current project to worksUnder
+                    if (project.getProjectManager() != null) {
+                        worksUnderSet.add(new UserInfoDto(project.getProjectManager().getId(),
+                                project.getProjectManager().getUsername(),
+                                project.getProjectManager().getEmail(),
+                                userMapper.toRoleNameSet(project.getProjectManager().getRoles())));
+                    }
+                    // Add Workers directly assigned to this project to supervisedWorkers
+                    if (project.getWorkers() != null) {
+                        project.getWorkers().forEach(worker ->
+                                supervisedWorkersSet.add(new UserInfoDto(worker.getId(),
+                                        worker.getUsername(),
+                                        worker.getEmail(),
+                                        userMapper.toRoleNameSet(worker.getRoles())))
+                        );
+                    }
+                    // Add Workers from tasks within this project to supervisedWorkers
+                    if (project.getMainTasks() != null) {
+                        project.getMainTasks().forEach(mainTask -> {
+                            // If the main task itself has this site supervisor, add it to supervisedTasks
+                            if (mainTask.getSiteSupervisor() != null && mainTask.getSiteSupervisor().equals(user)) {
+                                supervisedTasksSet.add(mainTask);
+                            }
+                            if (mainTask.getSubtasks() != null) {
+                                mainTask.getSubtasks().forEach(subtask -> {
+                                    if (subtask.getWorkerAssignments() != null) {
+                                        subtask.getWorkerAssignments().forEach(assignment -> {
+                                            if (assignment.getWorker() != null) {
+                                                User worker = assignment.getWorker();
+                                                supervisedWorkersSet.add(new UserInfoDto(worker.getId(),
+                                                        worker.getUsername(),
+                                                        worker.getEmail(),
+                                                        userMapper.toRoleNameSet(worker.getRoles())));
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
             }
-            if (user.getSupervisedWorkers() != null && !user.getSupervisedWorkers().isEmpty()) {
-                dto.setSupervisedWorkers(user.getSupervisedWorkers().stream()
-                        .map(worker -> new UserInfoDto(worker.getId(), worker.getUsername(), worker.getEmail(), userMapper.toRoleNameSet(worker.getRoles())))
-                        .collect(Collectors.toList()));
+
+            // Also check the user's direct projectManager link (if exists and not already captured by project)
+            if (user.getProjectManager() != null) {
+                worksUnderSet.add(new UserInfoDto(user.getProjectManager().getId(),
+                        user.getProjectManager().getUsername(),
+                        user.getProjectManager().getEmail(),
+                        userMapper.toRoleNameSet(user.getProjectManager().getRoles())));
             }
+
+            dto.setWorksUnder(worksUnderSet.stream().sorted((u1, u2) -> u1.getUsername().compareTo(u2.getUsername())).collect(Collectors.toList()));
+            dto.setSupervisedWorkers(supervisedWorkersSet.stream().sorted((u1, u2) -> u1.getUsername().compareTo(u2.getUsername())).collect(Collectors.toList()));
+
+            // Convert collected supervised tasks to DTOs
+            dto.setSupervisedTasks(supervisedTasksSet.stream()
+                    .map(mainTaskMapper::toResponseDto)
+                    .sorted((t1, t2) -> t1.getTitle().compareTo(t2.getTitle())) // Optional: sort tasks by title
+                    .collect(Collectors.toList()));
         }
 
-        // For Equipment Managers
+        // --- Logic for Equipment Managers ---
         if (user.hasRole("ROLE_EQUIPMENT_MANAGER")) {
             if (user.getManagedEquipment() != null && !user.getManagedEquipment().isEmpty()) {
                 dto.setManagedEquipment(equipmentMapper.toResponseDtoList(user.getManagedEquipment()));
             }
+            // Populate worksUnder for Equipment Manager based on their direct Project Manager (if set)
+            Set<UserInfoDto> worksUnderSet = new HashSet<>();
+            if (user.getProjectManager() != null) {
+                worksUnderSet.add(new UserInfoDto(user.getProjectManager().getId(),
+                        user.getProjectManager().getUsername(),
+                        user.getProjectManager().getEmail(),
+                        userMapper.toRoleNameSet(user.getProjectManager().getRoles())));
+            }
+            dto.setWorksUnder(worksUnderSet.stream().distinct().collect(Collectors.toList()));
         }
 
-        // For Workers
+        // --- Logic for Workers ---
         if (user.hasRole("ROLE_WORKER")) {
             if (user.getWorkerAssignments() != null && !user.getWorkerAssignments().isEmpty()) {
                 dto.setWorkerAssignments(user.getWorkerAssignments().stream()
@@ -169,33 +241,22 @@ public class UserProfileService {
                         .map(availabilitySlotMapper::toDto)
                         .collect(Collectors.toList()));
             }
-        }
 
-        // Populate 'worksUnder' (applies to Workers, Site Supervisors, Equipment Managers)
-        List<UserInfoDto> worksUnderList = new java.util.ArrayList<>();
-
-        if (user.hasRole("ROLE_WORKER")) {
+            // Populate worksUnder for Workers (Project Managers and Site Supervisors of their assigned tasks/projects)
             List<Object[]> managers = userRepository.findProjectManagersAndSiteSupervisorsForWorker(user.getId());
+            Set<UserInfoDto> worksUnderSet = new HashSet<>();
             for (Object[] row : managers) {
                 User pm = (User) row[0];
                 User ss = (User) row[1];
                 if (pm != null) {
-                    worksUnderList.add(new UserInfoDto(pm.getId(), pm.getUsername(), pm.getEmail(), userMapper.toRoleNameSet(pm.getRoles())));
+                    worksUnderSet.add(new UserInfoDto(pm.getId(), pm.getUsername(), pm.getEmail(), userMapper.toRoleNameSet(pm.getRoles())));
                 }
                 if (ss != null) {
-                    worksUnderList.add(new UserInfoDto(ss.getId(), ss.getUsername(), ss.getEmail(), userMapper.toRoleNameSet(ss.getRoles())));
+                    worksUnderSet.add(new UserInfoDto(ss.getId(), ss.getUsername(), ss.getEmail(), userMapper.toRoleNameSet(ss.getRoles())));
                 }
             }
-        } else if (user.hasRole("ROLE_SITE_SUPERVISOR") || user.hasRole("ROLE_EQUIPMENT_MANAGER")) {
-            // These roles report directly to a Project Manager (if set on their user profile)
-            if (user.getProjectManager() != null) {
-                worksUnderList.add(new UserInfoDto(user.getProjectManager().getId(),
-                        user.getProjectManager().getUsername(),
-                        user.getProjectManager().getEmail(),
-                        userMapper.toRoleNameSet(user.getProjectManager().getRoles())));
-            }
+            dto.setWorksUnder(worksUnderSet.stream().distinct().collect(Collectors.toList()));
         }
-        dto.setWorksUnder(worksUnderList.stream().distinct().collect(Collectors.toList()));
 
         return dto;
     }
