@@ -28,9 +28,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mt.equipmentManager " +
             "LEFT JOIN FETCH mt.siteSupervisor " +
             "LEFT JOIN FETCH u.siteSupervisor ss " +
-            "LEFT JOIN FETCH u.projectManager pm_user " +
+            "LEFT JOIN FETCH u.projectManager pm_user " + // This is the crucial line for direct PM relationship
             "LEFT JOIN FETCH u.managedTeam mdt " +
-            "LEFT JOIN FETCH u.managedProjects mpr " + // Still fetch direct managed projects for PMs
+            "LEFT JOIN FETCH u.managedProjects mpr " +
             "LEFT JOIN FETCH u.supervisedWorkers sw " +
             "LEFT JOIN FETCH u.supervisedTasks st " +
             "LEFT JOIN FETCH st.subtasks st_sub " +
@@ -51,9 +51,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LEFT JOIN FETCH mt.equipmentManager " +
             "LEFT JOIN FETCH mt.siteSupervisor " +
             "LEFT JOIN FETCH u.siteSupervisor ss " +
-            "LEFT JOIN FETCH u.projectManager pm_user " +
+            "LEFT JOIN FETCH u.projectManager pm_user " + // This is the crucial line for direct PM relationship
             "LEFT JOIN FETCH u.managedTeam mdt " +
-            "LEFT JOIN FETCH u.managedProjects mpr " + // Still fetch direct managed projects for PMs
+            "LEFT JOIN FETCH u.managedProjects mpr " +
             "LEFT JOIN FETCH u.supervisedWorkers sw " +
             "LEFT JOIN FETCH u.supervisedTasks st " +
             "LEFT JOIN FETCH st.subtasks st_sub " +

@@ -7,7 +7,7 @@ import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.mapper.*;
 import com.buildscheduler.buildscheduler.model.*;
 import com.buildscheduler.buildscheduler.repository.NotificationRepository;
-import com.buildscheduler.buildscheduler.repository.ProjectRepository; // Import ProjectRepository
+import com.buildscheduler.buildscheduler.repository.ProjectRepository;
 import com.buildscheduler.buildscheduler.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -18,8 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.HashSet;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +27,7 @@ public class UserProfileService {
 
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
-    private final ProjectRepository projectRepository; // Inject ProjectRepository
+    private final ProjectRepository projectRepository;
     private final UserMapper userMapper;
     private final NotificationMapper notificationMapper;
     private final ProjectMapper projectMapper;
@@ -63,6 +63,7 @@ public class UserProfileService {
             throw new ResourceNotFoundException("User not authenticated");
         }
         // Fetch full profile, including eager loads defined in userRepository.findFullProfileById
+        // This ensures the current user's direct projectManager and siteSupervisor are loaded
         return userRepository.findFullProfileById(((User) authentication.getPrincipal()).getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Authenticated User", "id", ((User) authentication.getPrincipal()).getId()));
     }
@@ -196,6 +197,7 @@ public class UserProfileService {
             }
 
             // Also check the user's direct projectManager link (if exists and not already captured by project)
+            // This ensures if a SS has a direct PM not tied to a specific project they supervise, it's also included.
             if (user.getProjectManager() != null) {
                 worksUnderSet.add(new UserInfoDto(user.getProjectManager().getId(),
                         user.getProjectManager().getUsername(),
@@ -203,8 +205,8 @@ public class UserProfileService {
                         userMapper.toRoleNameSet(user.getProjectManager().getRoles())));
             }
 
-            dto.setWorksUnder(worksUnderSet.stream().sorted((u1, u2) -> u1.getUsername().compareTo(u2.getUsername())).collect(Collectors.toList()));
-            dto.setSupervisedWorkers(supervisedWorkersSet.stream().sorted((u1, u2) -> u1.getUsername().compareTo(u2.getUsername())).collect(Collectors.toList()));
+            dto.setWorksUnder(worksUnderSet.stream().distinct().sorted((u1, u2) -> u1.getUsername().compareTo(u2.getUsername())).collect(Collectors.toList()));
+            dto.setSupervisedWorkers(supervisedWorkersSet.stream().distinct().sorted((u1, u2) -> u1.getUsername().compareTo(u2.getUsername())).collect(Collectors.toList()));
 
             // Convert collected supervised tasks to DTOs
             dto.setSupervisedTasks(supervisedTasksSet.stream()
@@ -218,15 +220,30 @@ public class UserProfileService {
             if (user.getManagedEquipment() != null && !user.getManagedEquipment().isEmpty()) {
                 dto.setManagedEquipment(equipmentMapper.toResponseDtoList(user.getManagedEquipment()));
             }
-            // Populate worksUnder for Equipment Manager based on their direct Project Manager (if set)
+
             Set<UserInfoDto> worksUnderSet = new HashSet<>();
-            if (user.getProjectManager() != null) {
+            // Fetch projects where this user is the equipment manager
+            Set<Project> projectsAsEquipmentManager = projectRepository.findProjectsByEquipmentManagerIdWithProjectManager(user.getId());
+
+            // Collect Project Managers from these projects
+            projectsAsEquipmentManager.stream()
+                    .map(Project::getProjectManager)
+                    .filter(pm -> pm != null)
+                    .distinct()
+                    .map(pm -> new UserInfoDto(pm.getId(), pm.getUsername(), pm.getEmail(), userMapper.toRoleNameSet(pm.getRoles())))
+                    .forEach(worksUnderSet::add);
+
+            // Optionally, if the EM also has a direct reporting PM (e.g., in a flat org chart)
+            // This line can be kept if `User.projectManager` is used for a direct reporting line
+            // that is independent of project assignments. If not, you can remove it.
+            if (user.getProjectManager() != null) { // This `projectManager` is the direct field on the User entity
                 worksUnderSet.add(new UserInfoDto(user.getProjectManager().getId(),
                         user.getProjectManager().getUsername(),
                         user.getProjectManager().getEmail(),
                         userMapper.toRoleNameSet(user.getProjectManager().getRoles())));
             }
-            dto.setWorksUnder(worksUnderSet.stream().distinct().collect(Collectors.toList()));
+
+            dto.setWorksUnder(worksUnderSet.stream().distinct().sorted((u1, u2) -> u1.getUsername().compareTo(u2.getUsername())).collect(Collectors.toList()));
         }
 
         // --- Logic for Workers ---
@@ -255,7 +272,7 @@ public class UserProfileService {
                     worksUnderSet.add(new UserInfoDto(ss.getId(), ss.getUsername(), ss.getEmail(), userMapper.toRoleNameSet(ss.getRoles())));
                 }
             }
-            dto.setWorksUnder(worksUnderSet.stream().distinct().collect(Collectors.toList()));
+            dto.setWorksUnder(worksUnderSet.stream().distinct().sorted((u1, u2) -> u1.getUsername().compareTo(u2.getUsername())).collect(Collectors.toList()));
         }
 
         return dto;

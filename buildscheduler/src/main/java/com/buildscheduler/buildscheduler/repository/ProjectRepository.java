@@ -226,4 +226,10 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             "LEFT JOIN users mtss ON mt.supervisor_id = mtss.id " +
             "WHERE p.id = :id", nativeQuery = true)
     List<Object[]> findProjectStructureNative(@Param("id") Long id);
+
+    @Query("SELECT DISTINCT p FROM Project p " +
+            "LEFT JOIN FETCH p.projectManager pm " + // Fetch the project's PM
+            "WHERE p.equipmentManager.id = :equipmentManagerId")
+    Set<Project> findProjectsByEquipmentManagerIdWithProjectManager(@Param("equipmentManagerId") Long equipmentManagerId);
+
 }
