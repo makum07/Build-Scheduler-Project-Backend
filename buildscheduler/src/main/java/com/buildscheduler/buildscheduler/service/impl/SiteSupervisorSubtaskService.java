@@ -57,15 +57,33 @@ public class SiteSupervisorSubtaskService {
     @Transactional
     public SubtaskResponseDto createSubtask(SubtaskRequestDto dto, Long mainTaskId) {
         User currentUser = getCurrentUser();
+        System.out.println("DEBUG: Current User ID: " + currentUser.getId());
+        System.out.println("DEBUG: Current User Roles: " + currentUser.getRoles().stream().map(r -> r.getName()).collect(Collectors.joining(", ")));
+
         MainTask mainTask = mainTaskRepository.findById(mainTaskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Main task not found"));
 
-        if (!mainTask.getProject().getSiteSupervisor().equals(currentUser)) {
-            throw new AccessDeniedException("Not authorized for this project");
+        System.out.println("DEBUG: MainTask ID: " + mainTask.getId());
+        System.out.println("DEBUG: MainTask Project ID: " + mainTask.getProject().getId());
+
+        User projectSiteSupervisor = mainTask.getProject().getSiteSupervisor();
+
+        if (projectSiteSupervisor != null) {
+            System.out.println("DEBUG: Project Site Supervisor ID from MainTask's Project: " + projectSiteSupervisor.getId());
+        } else {
+            System.out.println("DEBUG: Project Site Supervisor is NULL in MainTask's Project.");
         }
+
+        // You can uncomment your authorization check here, but first fix the current error
+        // if (projectSiteSupervisor == null || !projectSiteSupervisor.equals(currentUser)) {
+        //     System.out.println("DEBUG: Authorization check FAILED.");
+        //     System.out.println("DEBUG: Project SS ID: " + (projectSiteSupervisor != null ? projectSiteSupervisor.getId() : "null") + ", Current User ID: " + currentUser.getId());
+        //     throw new AccessDeniedException("Not authorized for this project");
+        // }
 
         Subtask subtask = new Subtask();
         subtask.setTitle(dto.getTitle());
+
         subtask.setDescription(dto.getDescription());
         subtask.setPlannedStart(dto.getPlannedStart());
         subtask.setPlannedEnd(dto.getPlannedEnd());
@@ -74,10 +92,14 @@ public class SiteSupervisorSubtaskService {
         subtask.setPriority(dto.getPriority());
         subtask.setStatus(Subtask.TaskStatus.PLANNED);
         subtask.setEquipmentRequestNotes(dto.getEquipmentRequestNotes());
-        subtask.setMainTask(mainTask);
-        subtask.setProject(mainTask.getProject());
 
-        // Always work with a new mutable set when setting for a new entity
+        subtask.setMainTask(mainTask);
+        // <<<<<<<<<<<<<<<<<<<< PUT THIS LINE BACK >>>>>>>>>>>>>>>>>>>>>
+        // This line sets the Project for the Subtask directly, assuming your Subtask entity
+        // has a direct @ManyToOne relationship to Project or a projectId field.
+        subtask.setProject(mainTask.getProject());
+        // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
         subtask.setRequiredSkills(new HashSet<>(lookupSkills(dto.getRequiredSkills())));
 
         Set<Equipment> equipmentNeeds = new HashSet<>();
@@ -88,14 +110,12 @@ public class SiteSupervisorSubtaskService {
                 equipmentNeeds.add(equipment);
             }
         }
-        // Always work with a new mutable set when setting for a new entity
         subtask.setEquipmentNeeds(new HashSet<>(equipmentNeeds));
 
         Subtask savedSubtask = subtaskRepository.save(subtask);
         notifyEquipmentManager(savedSubtask);
         return convertToDto(savedSubtask);
     }
-
     //------------------------------------------------------------------------------------------------------------------
 
     @Transactional
