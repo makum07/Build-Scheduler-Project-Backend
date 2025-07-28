@@ -1,9 +1,6 @@
 package com.buildscheduler.buildscheduler.service.impl;
 
-import com.buildscheduler.buildscheduler.dto.worker.AvailabilitySlotDto;
-import com.buildscheduler.buildscheduler.dto.worker.BulkAvailabilityDto;
-import com.buildscheduler.buildscheduler.dto.worker.ProfileDto;
-import com.buildscheduler.buildscheduler.dto.worker.SkillDto;
+import com.buildscheduler.buildscheduler.dto.worker.*;
 import com.buildscheduler.buildscheduler.exception.ConflictException;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.mapper.AvailabilitySlotMapper;
@@ -33,19 +30,21 @@ public class ProfileServiceImpl implements ProfileService {
     private final SkillMapper skillMapper;
     private final AvailabilitySlotMapper slotMapper;
     private final ProfileMapper profileMapper;
+    private final WorkerAssignmentRepository workerAssignmentRepository;
 
     public ProfileServiceImpl(SkillRepository skillRepository,
                               WorkerAvailabilitySlotRepository slotRepository,
                               UserRepository userRepository,
                               SkillMapper skillMapper,
                               AvailabilitySlotMapper slotMapper,
-                              ProfileMapper profileMapper) {
+                              ProfileMapper profileMapper, WorkerAssignmentRepository workerAssignmentRepository) {
         this.skillRepository = skillRepository;
         this.slotRepository = slotRepository;
         this.userRepository = userRepository;
         this.skillMapper = skillMapper;
         this.slotMapper = slotMapper;
         this.profileMapper = profileMapper;
+        this.workerAssignmentRepository = workerAssignmentRepository;
     }
 
     private User getCurrentUser() {
@@ -242,5 +241,54 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
 
+    @Override
+    @Transactional(readOnly = true) // Mark as read-only
+    public Set<WorkerAssignmentDetailsDto> getMyAssignments() {
+        User currentUser = getCurrentUser(); // Get the authenticated User entity
 
+        // Find all worker assignments for the current user (worker)
+        // Ensure that findByWorker is properly defined in WorkerAssignmentRepository
+        Set<WorkerAssignment> assignments = workerAssignmentRepository.findByWorker(currentUser);
+
+        // Map them to the DTO
+        return assignments.stream()
+                .map(this::convertToWorkerAssignmentDetailsDto)
+                .collect(Collectors.toSet());
+    }
+
+    // Helper method to convert WorkerAssignment entity to DTO
+    private WorkerAssignmentDetailsDto convertToWorkerAssignmentDetailsDto(WorkerAssignment assignment) {
+        WorkerAssignmentDetailsDto dto = new WorkerAssignmentDetailsDto();
+        dto.setAssignmentId(assignment.getId());
+        dto.setAssignmentStart(assignment.getAssignmentStart());
+        dto.setAssignmentEnd(assignment.getAssignmentEnd());
+        dto.setWorkerNotes(assignment.getWorkerNotes());
+
+        // Subtask details
+        if (assignment.getSubtask() != null) {
+            dto.setSubtaskId(assignment.getSubtask().getId());
+            dto.setSubtaskTitle(assignment.getSubtask().getTitle());
+            dto.setSubtaskDescription(assignment.getSubtask().getDescription());
+
+            // MainTask details (accessed via Subtask)
+            if (assignment.getSubtask().getMainTask() != null) {
+                dto.setMainTaskId(assignment.getSubtask().getMainTask().getId());
+                dto.setMainTaskTitle(assignment.getSubtask().getMainTask().getTitle());
+
+                // Project details (accessed via MainTask's project)
+                if (assignment.getSubtask().getMainTask().getProject() != null) {
+                    dto.setProjectId(assignment.getSubtask().getMainTask().getProject().getId());
+                    dto.setProjectTitle(assignment.getSubtask().getMainTask().getProject().getTitle());
+                }
+            }
+        }
+
+        // Assigned By user details
+        if (assignment.getAssignedBy() != null) {
+            dto.setAssignedById(assignment.getAssignedBy().getId());
+            dto.setAssignedByName(assignment.getAssignedBy().getUsername()); // Or full name if available
+        }
+
+        return dto;
+    }
 }

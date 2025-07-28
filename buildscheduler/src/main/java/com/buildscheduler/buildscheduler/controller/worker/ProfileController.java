@@ -1,9 +1,6 @@
 package com.buildscheduler.buildscheduler.controller.worker;
 
-import com.buildscheduler.buildscheduler.dto.worker.AvailabilitySlotDto;
-import com.buildscheduler.buildscheduler.dto.worker.BulkAvailabilityDto;
-import com.buildscheduler.buildscheduler.dto.worker.ProfileDto;
-import com.buildscheduler.buildscheduler.dto.worker.SkillDto;
+import com.buildscheduler.buildscheduler.dto.worker.*;
 import com.buildscheduler.buildscheduler.response.ApiResponse;
 import com.buildscheduler.buildscheduler.service.custom.ProfileService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -104,5 +101,9 @@ public class ProfileController {
         return ResponseEntity.ok(ApiResponse.ofSuccess("All availability slots retrieved", slots));
     }
 
-
+    @GetMapping("/assignments")
+    public ResponseEntity<ApiResponse<Set<WorkerAssignmentDetailsDto>>> getMyAssignments() {
+        Set<WorkerAssignmentDetailsDto> assignments = profileService.getMyAssignments();
+        return ResponseEntity.ok(ApiResponse.ofSuccess("User assignments retrieved successfully", assignments));
+    }
 }
