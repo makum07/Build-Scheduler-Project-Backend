@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -53,12 +54,19 @@ public class SiteSupervisorAssignmentService {
 
         List<WorkerSearchResultDto> matchedWorkers = allWorkers.stream()
                 .filter(worker -> {
+                    // Check skills
                     boolean hasSkills = worker.getSkills().stream()
                             .anyMatch(skill -> requiredSkills.contains(skill.getName().toLowerCase()));
                     System.out.println("Worker " + worker.getUsername() + " (ID: " + worker.getId() + ") - Has required skills (" + requiredSkills + "): " + hasSkills + " (Worker skills: " + worker.getSkills().stream().map(s -> s.getName()).collect(Collectors.joining(", ")) + ")");
-                    return hasSkills;
-                })
-                .filter(worker -> {
+                    if (!hasSkills) {
+                        return false; // No skills, filter out early
+                    }
+
+                    // *** FETCH ASSIGNMENTS EXPLICITLY FOR AVAILABILITY CHECK ***
+                    Set<WorkerAssignment> currentWorkerAssignments = workerAssignmentRepository.findByWorker(worker);
+                    worker.setWorkerAssignments(currentWorkerAssignments); // Temporarily set for the check
+
+                    // Check availability using the updated method
                     boolean available = worker.isAvailable(plannedStart, plannedEnd);
                     System.out.println("Worker " + worker.getUsername() + " (ID: " + worker.getId() + ") - Is available for " + plannedStart + " to " + plannedEnd + ": " + available);
                     return available;
@@ -84,6 +92,8 @@ public class SiteSupervisorAssignmentService {
         Subtask subtask = subtaskRepository.findById(subtaskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subtask not found with ID: " + subtaskId));
 
+        // Re-fetch worker to ensure its collection is loaded within the current transaction context
+        // This is crucial if worker was loaded in a separate transaction or with lazy loading.
         User worker = userRepository.findById(requestDto.getWorkerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Worker not found with ID: " + requestDto.getWorkerId()));
 
@@ -99,6 +109,11 @@ public class SiteSupervisorAssignmentService {
             throw new IllegalArgumentException("Assigned user is not a WORKER.");
         }
 
+        // *** FETCH ASSIGNMENTS EXPLICITLY FOR AVAILABILITY CHECK ***
+        // Ensure workerAssignments are loaded before calling isAvailable
+        Set<WorkerAssignment> currentWorkerAssignments = workerAssignmentRepository.findByWorker(worker);
+        worker.setWorkerAssignments(currentWorkerAssignments); // Temporarily set for the check
+
         if (!worker.isAvailable(assignmentStart, assignmentEnd)) {
             throw new ConflictException("Worker is not available for the specified time slot due to existing assignments or lack of availability.");
         }
@@ -113,7 +128,14 @@ public class SiteSupervisorAssignmentService {
 
         workerAssignmentRepository.save(workerAssignment);
 
+        // --- Start of Availability Update Logic ---
+        System.out.println("\n--- Starting Availability Update for Assignment ---");
+        System.out.println("Worker: " + worker.getUsername() + " (ID: " + worker.getId() + ")");
+        System.out.println("Assignment Time: " + assignmentStart + " to " + assignmentEnd);
+
         updateAvailabilityForAssignment(worker, assignmentStart, assignmentEnd);
+        System.out.println("--- Finished Availability Update for Assignment ---\n");
+        // --- End of Availability Update Logic ---
 
         String notificationMessage = String.format("You have been assigned to subtask '%s' (ID: %d) from %s to %s.",
                 subtask.getTitle(), subtask.getId(),
@@ -132,14 +154,23 @@ public class SiteSupervisorAssignmentService {
             throw new IllegalArgumentException("Authenticated user is not a Site Supervisor and cannot remove assignments.");
         }
 
-        User worker = assignment.getWorker();
+        // Re-fetch worker to ensure its collection is loaded within the current transaction context
+        User worker = userRepository.findById(assignment.getWorker().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Worker not found for assignment ID: " + assignmentId));
+
         LocalDateTime assignmentStart = assignment.getAssignmentStart();
         LocalDateTime assignmentEnd = assignment.getAssignmentEnd();
         Subtask subtask = assignment.getSubtask();
 
         workerAssignmentRepository.delete(assignment);
 
+        // --- Start of Availability Reconstruction Logic ---
+        System.out.println("\n--- Starting Availability Reconstruction for Assignment Removal ---");
+        System.out.println("Worker: " + worker.getUsername() + " (ID: " + worker.getId() + ")");
+        System.out.println("Removed Assignment Time: " + assignmentStart + " to " + assignmentEnd);
         reconstructAvailabilityAfterRemoval(worker, assignmentStart, assignmentEnd);
+        System.out.println("--- Finished Availability Reconstruction for Assignment Removal ---\n");
+        // --- End of Availability Reconstruction Logic ---
 
         String notificationMessage = String.format("Your assignment to subtask '%s' (ID: %d) from %s to %s has been removed.",
                 subtask.getTitle(), subtask.getId(),
@@ -149,72 +180,121 @@ public class SiteSupervisorAssignmentService {
     }
 
     private void updateAvailabilityForAssignment(User worker, LocalDateTime assignmentStart, LocalDateTime assignmentEnd) {
-        if (worker.getWorkerAvailabilitySlots() == null) {
-            return;
-        }
+        final LocalDate assignmentDate = assignmentStart.toLocalDate();
+        final LocalTime assignmentTimeStart = assignmentStart.toLocalTime();
+        final LocalTime assignmentTimeEnd = assignmentEnd.toLocalTime();
 
-        // Fetch slots for the specific date of assignment
-        List<WorkerAvailabilitySlot> slotsOnDate = workerAvailabilitySlotRepository.findByUserIdAndDate(worker.getId(), assignmentStart.toLocalDate());
+        // **IMPORTANT:** Create a temporary list of slots that will be modified or removed.
+        // We'll iterate over this list, and then update the actual worker's collection.
+        // Using a new list prevents ConcurrentModificationException and allows precise control.
+        List<WorkerAvailabilitySlot> slotsOnDateCopy = worker.getWorkerAvailabilitySlots().stream()
+                .filter(slot -> slot.getDate().equals(assignmentDate))
+                .collect(Collectors.toList());
 
-        List<WorkerAvailabilitySlot> slotsToDelete = new ArrayList<>();
-        List<WorkerAvailabilitySlot> slotsToSave = new ArrayList<>();
+        System.out.println("  Initial managed availability slots for date " + assignmentDate + " for worker " + worker.getId() + ":");
+        slotsOnDateCopy.forEach(s -> System.out.println("    Managed slot: ID=" + s.getId() + ", " + s.getStartTime() + " to " + s.getEndTime()));
 
-        LocalTime assignmentTimeStart = assignmentStart.toLocalTime();
-        LocalTime assignmentTimeEnd = assignmentEnd.toLocalTime();
+        List<WorkerAvailabilitySlot> slotsToDeleteFromDb = new ArrayList<>(); // Store slots that need explicit DB deletion
+        Set<WorkerAvailabilitySlot> newSlotsForUserCollection = new HashSet<>(); // Use a Set to avoid duplicates if any logic error (though shouldn't happen)
 
-        for (WorkerAvailabilitySlot slot : slotsOnDate) {
-            LocalTime slotStart = slot.getStartTime();
-            LocalTime slotEnd = slot.getEndTime();
+        // First, iterate and determine which slots are affected and what new slots should be created
+        for (WorkerAvailabilitySlot slot : slotsOnDateCopy) {
+            final LocalTime slotStart = slot.getStartTime();
+            final LocalTime slotEnd = slot.getEndTime();
 
-            if (!slot.overlaps(assignmentTimeStart, assignmentTimeEnd)) {
-                // No overlap, keep the slot as is
+            System.out.println("  Analyzing existing slot (ID: " + slot.getId() + "): " + slotStart + " to " + slotEnd);
+
+            boolean overlapsWithAssignment = slot.overlaps(assignmentTimeStart, assignmentTimeEnd);
+            System.out.println("    Does it overlap with assignment (" + assignmentTimeStart + " - " + assignmentTimeEnd + ")? " + overlapsWithAssignment);
+
+            if (!overlapsWithAssignment) {
+                // No overlap, this slot remains untouched. Add it to the new collection.
+                System.out.println("    No overlap. Slot " + slot.getId() + " remains as is in the collection.");
+                newSlotsForUserCollection.add(slot);
                 continue;
             }
 
-            // Mark this original slot for deletion as it will either be fully consumed or split
-            slotsToDelete.add(slot);
+            // If there's an overlap, this original slot will be deleted from the DB
+            slotsToDeleteFromDb.add(slot);
+            System.out.println("    Slot " + slot.getId() + " marked for explicit database deletion.");
 
+            // Case 1: Part of the slot before the assignment remains
             if (assignmentTimeStart.isAfter(slotStart)) {
-                // Part of the slot before the assignment remains
                 WorkerAvailabilitySlot newSlot = new WorkerAvailabilitySlot();
                 newSlot.setUser(worker);
-                newSlot.setDate(slot.getDate());
+                newSlot.setDate(assignmentDate);
                 newSlot.setStartTime(slotStart);
                 newSlot.setEndTime(assignmentTimeStart);
-                slotsToSave.add(newSlot);
+                newSlotsForUserCollection.add(newSlot);
+                System.out.println("    Created new slot (pre-assignment): " + newSlot.getStartTime() + " to " + newSlot.getEndTime());
+            } else if (assignmentTimeStart.equals(slotStart)) {
+                System.out.println("    Assignment starts at the beginning of the availability slot. No pre-assignment split needed.");
             }
 
+            // Case 2: Part of the slot after the assignment remains
             if (assignmentTimeEnd.isBefore(slotEnd)) {
-                // Part of the slot after the assignment remains
                 WorkerAvailabilitySlot newSlot = new WorkerAvailabilitySlot();
                 newSlot.setUser(worker);
-                newSlot.setDate(slot.getDate());
+                newSlot.setDate(assignmentDate);
                 newSlot.setStartTime(assignmentTimeEnd);
                 newSlot.setEndTime(slotEnd);
-                slotsToSave.add(newSlot);
+                newSlotsForUserCollection.add(newSlot);
+                System.out.println("    Created new slot (post-assignment): " + newSlot.getStartTime() + " to " + newSlot.getEndTime());
+            } else if (assignmentTimeEnd.equals(slotEnd)) {
+                System.out.println("    Assignment ends at the end of the availability slot. No post-assignment split needed.");
             }
         }
 
-        // Perform deletions and saves in bulk
-        if (!slotsToDelete.isEmpty()) {
-            workerAvailabilitySlotRepository.deleteAll(slotsToDelete);
+        // Now, perform the actual updates to the managed collection and database
+        // 1. Remove all old slots from the worker's managed collection for the specific date.
+        // This is safe because `slotsOnDateCopy` allowed us to iterate without ConcurrentModificationException.
+        // It signals to Hibernate to delete these from DB if `orphanRemoval=true`.
+        worker.getWorkerAvailabilitySlots().removeIf(slot -> slot.getDate().equals(assignmentDate));
+        System.out.println("  Cleared all old slots for " + assignmentDate + " from worker's in-memory collection.");
+
+
+        // 2. Add the newly calculated and unaffected slots to the worker's managed collection.
+        // Hibernate will handle inserting new ones if `CascadeType.ALL` is set.
+        worker.getWorkerAvailabilitySlots().addAll(newSlotsForUserCollection);
+        System.out.println("  Added " + newSlotsForUserCollection.size() + " new/unaffected slots to worker's in-memory collection.");
+
+        // 3. Explicitly delete the identified old slots from the database.
+        // This acts as a safeguard even if orphanRemoval isn't working as expected or if the entities
+        // aren't perfectly detached/managed as intended by `removeAll`.
+        if (!slotsToDeleteFromDb.isEmpty()) {
+            workerAvailabilitySlotRepository.deleteAllInBatch(slotsToDeleteFromDb);
+            System.out.println("  Explicitly deleted " + slotsToDeleteFromDb.size() + " old availability slots from DB.");
         }
-        if (!slotsToSave.isEmpty()) {
-            workerAvailabilitySlotRepository.saveAll(slotsToSave);
+
+        // 4. Explicitly save the newly created slots.
+        // While `addAll` to a cascaded collection usually handles this, an explicit `saveAll` ensures it.
+        List<WorkerAvailabilitySlot> slotsToSaveExplicitly = newSlotsForUserCollection.stream()
+                .filter(slot -> slot.getId() == null) // Only save new ones (those without an ID)
+                .collect(Collectors.toList());
+        if (!slotsToSaveExplicitly.isEmpty()) {
+            workerAvailabilitySlotRepository.saveAll(slotsToSaveExplicitly);
+            System.out.println("  Explicitly saved " + slotsToSaveExplicitly.size() + " newly created availability slots to DB.");
         }
     }
 
     private void reconstructAvailabilityAfterRemoval(User worker, LocalDateTime removedStart, LocalDateTime removedEnd) {
-        LocalDate removedDate = removedStart.toLocalDate();
-        LocalTime removedStartTime = removedStart.toLocalTime();
-        LocalTime removedEndTime = removedEnd.toLocalTime();
+        final LocalDate removedDate = removedStart.toLocalDate();
+        final LocalTime removedStartTime = removedStart.toLocalTime();
+        final LocalTime removedEndTime = removedEnd.toLocalTime();
 
-        // 1. Get all current availability slots for the worker on the specific date.
-        // These are the "old" slots that might need to be merged or kept.
-        List<WorkerAvailabilitySlot> currentAvailabilitySlots = workerAvailabilitySlotRepository.findByUserIdAndDate(worker.getId(), removedDate);
+        System.out.println("  Reconstructing availability for date: " + removedDate);
+        System.out.println("  Freed segment: " + removedStartTime + " to " + removedEndTime);
+
+        // **IMPORTANT:** Get a temporary list of current slots for the specific date from the managed collection.
+        List<WorkerAvailabilitySlot> currentManagedSlotsForDateCopy = worker.getWorkerAvailabilitySlots().stream()
+                .filter(slot -> slot.getDate().equals(removedDate))
+                .collect(Collectors.toList());
+
+        System.out.println("  Found " + currentManagedSlotsForDateCopy.size() + " current managed slots before merging for removal reconstruction.");
+        currentManagedSlotsForDateCopy.forEach(s -> System.out.println("    Current managed slot: ID=" + s.getId() + ", " + s.getStartTime() + " to " + s.getEndTime()));
+
 
         // 2. Prepare a list of all time segments to be considered for merging on this date.
-        // These will be conceptual segments (not managed entities initially), including the newly freed time.
         List<WorkerAvailabilitySlot> segmentsToMerge = new ArrayList<>();
 
         // Add the segment that was just freed by the assignment removal
@@ -224,11 +304,11 @@ public class SiteSupervisorAssignmentService {
         freedSegment.setStartTime(removedStartTime);
         freedSegment.setEndTime(removedEndTime);
         segmentsToMerge.add(freedSegment);
+        System.out.println("  Added freed segment to list for merging.");
 
-        // Add all current existing availability segments for that date as *new* copies
-        // This prevents Hibernate from tracking them as 'managed' entities
-        // that are about to be deleted. We just need their time data.
-        for (WorkerAvailabilitySlot existingSlot : currentAvailabilitySlots) {
+        // Add all current existing availability segments for that date as *new* copies for merging.
+        // Using copies ensures original entities are not affected by sorting or merging logic
+        for (WorkerAvailabilitySlot existingSlot : currentManagedSlotsForDateCopy) {
             WorkerAvailabilitySlot copy = new WorkerAvailabilitySlot();
             copy.setUser(worker);
             copy.setDate(existingSlot.getDate());
@@ -236,9 +316,13 @@ public class SiteSupervisorAssignmentService {
             copy.setEndTime(existingSlot.getEndTime());
             segmentsToMerge.add(copy);
         }
+        System.out.println("  Total segments to consider for merging: " + segmentsToMerge.size());
 
         // 3. Sort all segments by start time
         segmentsToMerge.sort((s1, s2) -> s1.getStartTime().compareTo(s2.getStartTime()));
+        System.out.println("  Segments sorted by start time.");
+        segmentsToMerge.forEach(s -> System.out.println("    Sorted segment: " + s.getStartTime() + " to " + s.getEndTime()));
+
 
         // 4. Perform the merge operation, creating entirely new WorkerAvailabilitySlot objects for the results
         List<WorkerAvailabilitySlot> finalMergedSlots = new ArrayList<>();
@@ -248,39 +332,72 @@ public class SiteSupervisorAssignmentService {
             currentMergedSegment.setDate(segmentsToMerge.get(0).getDate());
             currentMergedSegment.setStartTime(segmentsToMerge.get(0).getStartTime());
             currentMergedSegment.setEndTime(segmentsToMerge.get(0).getEndTime());
+            System.out.println("  Initial merged segment: " + currentMergedSegment.getStartTime() + " to " + currentMergedSegment.getEndTime());
 
             for (int i = 1; i < segmentsToMerge.size(); i++) {
                 WorkerAvailabilitySlot nextSegment = segmentsToMerge.get(i);
+                System.out.println("    Comparing current merged (" + currentMergedSegment.getStartTime() + "-" + currentMergedSegment.getEndTime() + ") with next segment (" + nextSegment.getStartTime() + "-" + nextSegment.getEndTime() + ")");
+
+                // Check for overlap or immediate contiguity
                 if (currentMergedSegment.overlaps(nextSegment.getStartTime(), nextSegment.getEndTime()) ||
                         currentMergedSegment.getEndTime().equals(nextSegment.getStartTime())) {
+                    // Merge: extend the end time of the current merged segment
                     currentMergedSegment.setEndTime(
                             currentMergedSegment.getEndTime().isAfter(nextSegment.getEndTime()) ?
                                     currentMergedSegment.getEndTime() : nextSegment.getEndTime()
                     );
+                    System.out.println("      Merged. New current merged segment: " + currentMergedSegment.getStartTime() + " to " + currentMergedSegment.getEndTime());
                 } else {
+                    // No overlap/contiguity, so add the current merged segment to the final list
                     finalMergedSlots.add(currentMergedSegment);
-                    // Create a NEW instance for the next segment
+                    System.out.println("      No merge. Added " + currentMergedSegment.getStartTime() + " to " + currentMergedSegment.getEndTime() + " to final list.");
+                    // Create a NEW instance for the next segment to start a new merged block
                     currentMergedSegment = new WorkerAvailabilitySlot();
                     currentMergedSegment.setUser(worker);
                     currentMergedSegment.setDate(nextSegment.getDate());
                     currentMergedSegment.setStartTime(nextSegment.getStartTime());
                     currentMergedSegment.setEndTime(nextSegment.getEndTime());
+                    System.out.println("      Starting new merged segment: " + currentMergedSegment.getStartTime() + " to " + currentMergedSegment.getEndTime());
                 }
             }
             finalMergedSlots.add(currentMergedSegment); // Add the last merged segment
+            System.out.println("  Added final merged segment: " + currentMergedSegment.getStartTime() + " to " + currentMergedSegment.getEndTime() + " to final list.");
+        }
+        System.out.println("  Finished merging. Final merged slots count: " + finalMergedSlots.size());
+        finalMergedSlots.forEach(s -> System.out.println("    Final merged slot: " + s.getStartTime() + " to " + s.getEndTime()));
+
+
+        // Now, update the worker's managed collection directly
+        // 1. Remove all old slots for this date from the worker's managed collection.
+        // This signals to Hibernate that these are 'orphaned' and should be deleted if orphanRemoval=true.
+        worker.getWorkerAvailabilitySlots().removeIf(slot -> slot.getDate().equals(removedDate));
+        System.out.println("  Removed all old slots for " + removedDate + " from worker's in-memory collection.");
+
+        // 2. Add the newly merged slots to the worker's managed collection.
+        // Hibernate will handle inserting these new entities.
+        worker.getWorkerAvailabilitySlots().addAll(finalMergedSlots);
+        System.out.println("  Added " + finalMergedSlots.size() + " merged slots to worker's in-memory collection.");
+
+        // 3. Explicitly delete the old slots from the database (those that were in currentManagedSlotsForDateCopy).
+        // This is a safety net.
+        if (!currentManagedSlotsForDateCopy.isEmpty()) {
+            workerAvailabilitySlotRepository.deleteAllInBatch(currentManagedSlotsForDateCopy);
+            System.out.println("  Explicitly deleted " + currentManagedSlotsForDateCopy.size() + " original availability slots from DB.");
         }
 
-        // 5. Delete ALL original slots for this date in the database.
-        // This is safe because `currentAvailabilitySlots` are the managed entities,
-        // and we derived our `finalMergedSlots` from copies.
-        if (!currentAvailabilitySlots.isEmpty()) {
-            workerAvailabilitySlotRepository.deleteAll(currentAvailabilitySlots);
+        // 4. Explicitly save the newly created slots.
+        List<WorkerAvailabilitySlot> slotsToSaveExplicitly = finalMergedSlots.stream()
+                .filter(slot -> slot.getId() == null) // Only save new ones (those without an ID)
+                .collect(Collectors.toList());
+        if (!slotsToSaveExplicitly.isEmpty()) {
+            workerAvailabilitySlotRepository.saveAll(slotsToSaveExplicitly);
+            System.out.println("  Explicitly saved " + slotsToSaveExplicitly.size() + " newly merged availability slots to DB.");
         }
 
-        // 6. Save the completely new, merged availability slots.
-        if (!finalMergedSlots.isEmpty()) { // Only save if there are slots to save
-            workerAvailabilitySlotRepository.saveAll(finalMergedSlots);
-        }
+        // At the end of the @Transactional method, Hibernate will flush the changes made
+        // to the managed `worker` entity and its `workerAvailabilitySlots` collection.
+        // This includes deleting "orphaned" slots and inserting new ones.
+        // The explicit repository calls act as an additional guarantee.
     }
 
     private User getCurrentUser() {

@@ -4,6 +4,7 @@ import com.buildscheduler.buildscheduler.security.JwtAuthenticationEntryPoint;
 import com.buildscheduler.buildscheduler.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // Import HttpMethod
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
@@ -38,14 +39,14 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-//
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // Permit all OPTIONS requests
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/auth/**",
                                 "/api/roles/**",
@@ -90,8 +91,10 @@ public class SecurityConfig {
                 "Content-Type"
         ));
 
+        // Ensure OPTIONS is included here, though Spring typically handles it
+        // when you allow it in securityFilterChain.
         config.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "DELETE", "OPTIONS"
+                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS" // Added PATCH and OPTIONS
         ));
 
         config.setExposedHeaders(List.of("Authorization"));

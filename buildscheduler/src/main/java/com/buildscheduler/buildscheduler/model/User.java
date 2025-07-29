@@ -11,6 +11,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter; // Added for debugging clarity
 import java.util.*;
 
 @Entity
@@ -19,30 +21,27 @@ import java.util.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "users")
-// Corrected Lombok annotations:
-@EqualsAndHashCode(callSuper = true, of = "id") // <-- callSuper = true and of = "id"
+@EqualsAndHashCode(callSuper = true, of = "id")
 @ToString(exclude = {
         "skills",
         "certifications",
-        "workerAvailabilitySlots", // Corrected field name
-        "workerAssignments",       // Corrected field name
+        "workerAvailabilitySlots",
+        "workerAssignments",
         "supervisedWorkers",
         "managedTeam",
         "managedProjects",
         "supervisedTasks",
         "managedEquipment",
         "notifications",
-        // Exclude self-referencing ManyToOne relationships if they can cause recursion in toString()
-        // It's better to explicitly list them if they are part of the graph being fetched.
         "siteSupervisor",
         "projectManager",
-        "roles" // Exclude EAGER collections from toString() to be safe and clean
+        "roles"
 })
 public class User extends BaseEntity implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // Keep this ID here, it's specific to the User entity
+    private Long id;
 
     @NotBlank(message = "Username is required")
     @Column(unique = true)
@@ -67,7 +66,6 @@ public class User extends BaseEntity implements UserDetails {
     )
     private Set<Role> roles = new HashSet<>();
 
-
     @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_skills",
@@ -83,8 +81,11 @@ public class User extends BaseEntity implements UserDetails {
     @BatchSize(size = 25)
     private Set<String> certifications = new HashSet<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @BatchSize(size = 25)
+//    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+//    @BatchSize(size = 25)
+//    private Set<WorkerAvailabilitySlot> workerAvailabilitySlots = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private Set<WorkerAvailabilitySlot> workerAvailabilitySlots = new HashSet<>();
 
     @Column(nullable = false, columnDefinition = "varchar(20) default 'INCOMPLETE'")
@@ -133,11 +134,106 @@ public class User extends BaseEntity implements UserDetails {
     private Set<Notification> notifications = new HashSet<>();
 
 
-    // In User.java
-    public boolean isAvailable(LocalDateTime start, LocalDateTime end) {
-        // ... (your existing availability logic)
-        return true; // Simplified for example, keep your original logic
+    // **CORRECTED isAvailable METHOD**
+    public boolean isAvailable(LocalDateTime desiredStart, LocalDateTime desiredEnd) {
+        if (desiredStart == null || desiredEnd == null || desiredStart.isAfter(desiredEnd)) {
+            System.out.println("DEBUG: Invalid desired time range.");
+            return false; // Invalid time range
+        }
+
+        // --- Step 1: Check against availability slots ---
+        // A worker must have at least one availability slot that fully contains the desired period.
+        boolean hasAvailabilityInSlots = false;
+        if (workerAvailabilitySlots != null && !workerAvailabilitySlots.isEmpty()) {
+            for (WorkerAvailabilitySlot slot : workerAvailabilitySlots) {
+                // Ensure the slot date matches the desired assignment date
+                // Or, if slots are recurring, adjust logic accordingly.
+                // For simplicity, we assume availability slots are defined for specific days.
+                if (!slot.getDate().isEqual(desiredStart.toLocalDate())) {
+                    continue; // This slot is for a different day
+                }
+
+                LocalTime slotStartTime = slot.getStartTime();
+                LocalTime slotEndTime = slot.getEndTime();
+
+                // Construct full LocalDateTime for the slot on the desired date
+                LocalDateTime slotStartDateTime = slot.getDate().atTime(slotStartTime);
+                LocalDateTime slotEndDateTime = slot.getDate().atTime(slotEndTime);
+
+                // Handle overnight slots (e.g., 22:00 - 06:00 crosses midnight)
+                if (slotEndTime.isBefore(slotStartTime)) {
+                    slotEndDateTime = slotEndDateTime.plusDays(1);
+                }
+
+                // Check if the desired period is entirely within this availability slot
+                // (start >= slotStart && end <= slotEnd)
+                if (!desiredStart.isBefore(slotStartDateTime) && !desiredEnd.isAfter(slotEndDateTime)) {
+                    hasAvailabilityInSlots = true;
+                    System.out.println(String.format("DEBUG: Worker %s (ID: %d) has availability slot %s - %s that covers desired %s - %s.",
+                            this.username, this.id,
+                            slotStartDateTime.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                            slotEndDateTime.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                            desiredStart.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                            desiredEnd.format(DateTimeFormatter.ofPattern("MMM dd HH:mm"))
+                    ));
+                    break; // Found a suitable availability slot
+                }
+            }
+        }
+
+        if (!hasAvailabilityInSlots) {
+            System.out.println(String.format("DEBUG: Worker %s (ID: %d) does NOT have an availability slot for %s - %s.",
+                    this.username, this.id,
+                    desiredStart.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                    desiredEnd.format(DateTimeFormatter.ofPattern("MMM dd HH:mm"))
+            ));
+            return false; // No availability slot found for the desired period
+        }
+
+        // --- Step 2: Check against existing worker assignments ---
+        // A worker is NOT available if the desired period overlaps with any existing assignment.
+        boolean overlapsExistingAssignment = false;
+        if (workerAssignments != null && !workerAssignments.isEmpty()) {
+            for (WorkerAssignment assignment : workerAssignments) {
+                LocalDateTime assignmentStart = assignment.getAssignmentStart();
+                LocalDateTime assignmentEnd = assignment.getAssignmentEnd();
+
+                // Overlap condition: (StartA < EndB) && (EndA > StartB)
+                // This means the two time ranges intersect.
+                if (desiredStart.isBefore(assignmentEnd) && desiredEnd.isAfter(assignmentStart)) {
+                    overlapsExistingAssignment = true;
+                    System.out.println(String.format("DEBUG: Worker %s (ID: %d) has existing assignment %s - %s that OVERLAPS with desired %s - %s.",
+                            this.username, this.id,
+                            assignmentStart.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                            assignmentEnd.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                            desiredStart.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                            desiredEnd.format(DateTimeFormatter.ofPattern("MMM dd HH:mm"))
+                    ));
+                    break; // Found an overlapping assignment
+                }
+            }
+        }
+
+        if (overlapsExistingAssignment) {
+            System.out.println(String.format("DEBUG: Worker %s (ID: %d) is NOT available due to existing assignment overlap for %s - %s.",
+                    this.username, this.id,
+                    desiredStart.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                    desiredEnd.format(DateTimeFormatter.ofPattern("MMM dd HH:mm"))
+            ));
+            return false;
+        }
+
+        // If we reached here, it means:
+        // 1. There is an availability slot that fully contains the desired period.
+        // 2. The desired period does not overlap with any existing assignment.
+        System.out.println(String.format("DEBUG: Worker %s (ID: %d) IS available for %s - %s.",
+                this.username, this.id,
+                desiredStart.format(DateTimeFormatter.ofPattern("MMM dd HH:mm")),
+                desiredEnd.format(DateTimeFormatter.ofPattern("MMM dd HH:mm"))
+        ));
+        return true;
     }
+
 
     // Required by Spring Security
     @Override
@@ -147,13 +243,12 @@ public class User extends BaseEntity implements UserDetails {
                 .toList();
     }
 
-    // REMOVE all manual overrides for equals(), hashCode(), and toString()
-    // Lombok will generate them correctly now.
     // Helper method to check roles
     public boolean hasRole(String roleName) {
         return this.getRoles() != null && this.getRoles().stream()
                 .anyMatch(role -> role.getName().equals(roleName));
     }
+
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }

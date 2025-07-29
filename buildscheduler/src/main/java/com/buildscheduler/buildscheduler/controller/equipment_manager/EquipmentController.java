@@ -63,7 +63,7 @@ public class EquipmentController {
         return ResponseEntity.ok(ApiResponse.ofSuccess("Managed equipment fetched successfully", equipmentList));
     }
 
-    // --- Get All Equipment (for Admin/Project Manager) ---
+
     @GetMapping("/all")
     @PreAuthorize("isAuthenticated()")// Typically for higher-level roles
     public ResponseEntity<ApiResponse<List<EquipmentResponseDto>>> getAllEquipment() {
