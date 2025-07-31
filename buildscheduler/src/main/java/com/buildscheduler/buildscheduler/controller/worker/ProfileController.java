@@ -106,4 +106,10 @@ public class ProfileController {
         Set<WorkerAssignmentDetailsDto> assignments = profileService.getMyAssignments();
         return ResponseEntity.ok(ApiResponse.ofSuccess("User assignments retrieved successfully", assignments));
     }
+    @GetMapping("/projects")
+    public ResponseEntity<ApiResponse<List<ProjectForWorkerDto>>> getMyProjects() {
+        List<ProjectForWorkerDto> projects = profileService.getWorkerProjectsWithCompletion();
+        return ResponseEntity.ok(ApiResponse.ofSuccess("Projects for the worker retrieved successfully", projects));
+    }
+
 }

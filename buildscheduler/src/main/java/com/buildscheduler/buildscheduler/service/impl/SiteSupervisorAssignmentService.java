@@ -5,10 +5,7 @@ import com.buildscheduler.buildscheduler.dto.site_supervisor.WorkerSearchResultD
 import com.buildscheduler.buildscheduler.exception.ConflictException;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.model.*;
-import com.buildscheduler.buildscheduler.repository.SubtaskRepository;
-import com.buildscheduler.buildscheduler.repository.UserRepository;
-import com.buildscheduler.buildscheduler.repository.WorkerAssignmentRepository;
-import com.buildscheduler.buildscheduler.repository.WorkerAvailabilitySlotRepository;
+import com.buildscheduler.buildscheduler.repository.*;
 import com.buildscheduler.buildscheduler.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -35,6 +32,7 @@ public class SiteSupervisorAssignmentService {
     private final WorkerAssignmentRepository workerAssignmentRepository;
     private final WorkerAvailabilitySlotRepository workerAvailabilitySlotRepository;
     private final NotificationService notificationService;
+    private final ProjectRepository projectRepository;
 
     @Transactional(readOnly = true)
     public List<WorkerSearchResultDto> findBestMatchedWorkers(Long subtaskId) {
@@ -92,12 +90,10 @@ public class SiteSupervisorAssignmentService {
         Subtask subtask = subtaskRepository.findById(subtaskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subtask not found with ID: " + subtaskId));
 
-        // Re-fetch worker to ensure its collection is loaded within the current transaction context
-        // This is crucial if worker was loaded in a separate transaction or with lazy loading.
         User worker = userRepository.findById(requestDto.getWorkerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Worker not found with ID: " + requestDto.getWorkerId()));
 
-        User assignedBy = getCurrentUser();
+        User assignedBy = getCurrentUser(); // Assuming this method exists and works
         if (assignedBy.getRoles().stream().noneMatch(role -> role.getName().equals("ROLE_SITE_SUPERVISOR"))) {
             throw new IllegalArgumentException("Authenticated user is not a Site Supervisor and cannot assign workers.");
         }
@@ -112,7 +108,7 @@ public class SiteSupervisorAssignmentService {
         // *** FETCH ASSIGNMENTS EXPLICITLY FOR AVAILABILITY CHECK ***
         // Ensure workerAssignments are loaded before calling isAvailable
         Set<WorkerAssignment> currentWorkerAssignments = workerAssignmentRepository.findByWorker(worker);
-        worker.setWorkerAssignments(currentWorkerAssignments); // Temporarily set for the check
+        worker.setWorkerAssignments(currentWorkerAssignments);
 
         if (!worker.isAvailable(assignmentStart, assignmentEnd)) {
             throw new ConflictException("Worker is not available for the specified time slot due to existing assignments or lack of availability.");
@@ -127,6 +123,18 @@ public class SiteSupervisorAssignmentService {
         workerAssignment.setWorkerNotes(requestDto.getWorkerNotes());
 
         workerAssignmentRepository.save(workerAssignment);
+
+        // --- NEW LOGIC TO UPDATE THE PROJECT'S WORKER LIST ---
+        Project project = subtask.getMainTask().getProject();
+
+        // This check prevents duplicate entries if the worker is already assigned to another subtask
+        // within the same project.
+        if (project.getWorkers().stream().noneMatch(pWorker -> pWorker.getId().equals(worker.getId()))) {
+            project.getWorkers().add(worker);
+            projectRepository.save(project); // Persist the change to the project and its join table
+            System.out.println("Worker " + worker.getUsername() + " added to project " + project.getTitle() + " workers list.");
+        }
+        // --- END OF NEW LOGIC ---
 
         // --- Start of Availability Update Logic ---
         System.out.println("\n--- Starting Availability Update for Assignment ---");

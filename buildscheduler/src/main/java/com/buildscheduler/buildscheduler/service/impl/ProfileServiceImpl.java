@@ -10,15 +10,14 @@ import com.buildscheduler.buildscheduler.model.*;
 import com.buildscheduler.buildscheduler.repository.*;
 
 import com.buildscheduler.buildscheduler.service.custom.ProfileService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,7 +30,12 @@ public class ProfileServiceImpl implements ProfileService {
     private final AvailabilitySlotMapper slotMapper;
     private final ProfileMapper profileMapper;
     private final WorkerAssignmentRepository workerAssignmentRepository;
-
+    @Autowired
+    private ProjectRepository projectRepository;
+   @Autowired
+    private MainTaskRepository mainTaskRepository;
+    @Autowired
+    private SubtaskRepository subtaskRepository;
     public ProfileServiceImpl(SkillRepository skillRepository,
                               WorkerAvailabilitySlotRepository slotRepository,
                               UserRepository userRepository,
@@ -290,5 +294,99 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         return dto;
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProjectForWorkerDto> getWorkerProjectsWithCompletion() {
+        User currentUser = getCurrentUser();
+
+        // 1. Fetch projects where the current user is a worker
+        Set<Project> projects = projectRepository.findByWorkersContaining(currentUser);
+        if (projects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. Collect all project IDs to fetch related main tasks and subtasks efficiently
+        List<Long> projectIds = projects.stream().map(Project::getId).toList();
+
+        // 3. Fetch all relevant main tasks for these projects in one go
+        List<MainTask> allMainTasks = mainTaskRepository.findByProjectIdIn(projectIds);
+        Map<Long, List<MainTask>> mainTasksByProjectId = allMainTasks.stream()
+                .collect(Collectors.groupingBy(mt -> mt.getProject().getId()));
+
+        // 4. Fetch all relevant subtasks for these main tasks in one go
+        List<Long> allMainTaskIds = allMainTasks.stream().map(MainTask::getId).toList();
+        List<Subtask> allSubtasks = Collections.emptyList();
+        if (!allMainTaskIds.isEmpty()) {
+            allSubtasks = subtaskRepository.findByMainTaskIdIn(allMainTaskIds);
+        }
+        Map<Long, List<Subtask>> subtasksByMainTaskId = allSubtasks.stream()
+                .collect(Collectors.groupingBy(st -> st.getMainTask().getId()));
+
+        // 5. Map Projects to DTOs and calculate completion percentage
+        return projects.stream().map(project -> {
+            ProjectForWorkerDto dto = new ProjectForWorkerDto();
+            dto.setId(project.getId());
+            dto.setTitle(project.getTitle());
+            dto.setDescription(project.getDescription());
+            dto.setStatus(project.getStatus());
+            dto.setStartDate(project.getStartDate());
+            dto.setEndDate(project.getEndDate());
+            dto.setLocation(project.getLocation());
+            dto.setPriority(project.getPriority());
+
+            List<MainTask> currentProjectMainTasks = mainTasksByProjectId.getOrDefault(project.getId(), Collections.emptyList());
+            double projectCompletion = calculateProjectCompletion(currentProjectMainTasks, subtasksByMainTaskId);
+            dto.setCompletionPercentage(roundToTwoDecimalPlaces(projectCompletion));
+
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+    // ------------------------
+    // Utility Calculation Methods (Copied from EquipmentManagerProjectService)
+    // ------------------------
+    private double calculateSubtaskCompletion(Subtask subtask) {
+        if (subtask == null || subtask.getStatus() == null) return 0.0;
+        return switch (subtask.getStatus()) {
+            case COMPLETED -> 100.0;
+            case IN_PROGRESS -> 50.0;
+            case ASSIGNED -> 25.0;
+            case ON_HOLD -> 10.0;
+            case DELAYED -> 5.0;
+            default -> 0.0;
+        };
+    }
+
+    private double calculateMainTaskCompletion(List<Subtask> subtasks, MainTask mainTask) {
+        if (subtasks == null || subtasks.isEmpty()) {
+            return switch (mainTask.getStatus()) {
+                case COMPLETED -> 100.0;
+                case IN_PROGRESS -> 50.0;
+                case ON_HOLD -> 10.0;
+                case DELAYED -> 5.0;
+                default -> 0.0;
+            };
+        }
+        return subtasks.stream()
+                .mapToDouble(this::calculateSubtaskCompletion)
+                .average()
+                .orElse(0.0);
+    }
+
+    private double calculateProjectCompletion(List<MainTask> mainTasks, Map<Long, List<Subtask>> subtasksByMainTask) {
+        if (mainTasks == null || mainTasks.isEmpty()) {
+            return 0.0;
+        }
+        return mainTasks.stream()
+                .mapToDouble(mainTask -> calculateMainTaskCompletion(subtasksByMainTask.getOrDefault(mainTask.getId(), Collections.emptyList()), mainTask))
+                .average()
+                .orElse(0.0);
+    }
+
+    private double roundToTwoDecimalPlaces(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 }

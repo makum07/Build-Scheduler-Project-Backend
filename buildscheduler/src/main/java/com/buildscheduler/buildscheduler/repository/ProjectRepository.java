@@ -17,6 +17,7 @@ import java.util.Set; // Import Set
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
+    Set<Project> findByWorkersContaining(User worker);
 
     List<Project> findByEquipmentManager(User equipmentManager);
 

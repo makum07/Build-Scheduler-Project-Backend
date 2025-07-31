@@ -26,4 +26,6 @@ public interface ProfileService {
     List<AvailabilitySlotDto> getAllAvailabilitySlots();
 
     Set<WorkerAssignmentDetailsDto> getMyAssignments();
+
+    List<ProjectForWorkerDto> getWorkerProjectsWithCompletion();
 }
