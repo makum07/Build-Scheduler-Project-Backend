@@ -4,14 +4,12 @@ import com.buildscheduler.buildscheduler.dto.project_manager.ProjectRequestDto;
 import com.buildscheduler.buildscheduler.dto.project_manager.ProjectResponseDto;
 import com.buildscheduler.buildscheduler.exception.ResourceNotFoundException;
 import com.buildscheduler.buildscheduler.mapper.UserMapper;
-import com.buildscheduler.buildscheduler.model.MainTask;
-import com.buildscheduler.buildscheduler.model.Project;
-import com.buildscheduler.buildscheduler.model.Subtask;
-import com.buildscheduler.buildscheduler.model.User;
+import com.buildscheduler.buildscheduler.model.*;
 import com.buildscheduler.buildscheduler.repository.MainTaskRepository;
 import com.buildscheduler.buildscheduler.repository.ProjectRepository;
 import com.buildscheduler.buildscheduler.repository.SubtaskRepository;
 import com.buildscheduler.buildscheduler.repository.UserRepository;
+import com.buildscheduler.buildscheduler.service.NotificationService;
 import com.buildscheduler.buildscheduler.service.custom.ProjectService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,16 +30,17 @@ public class ProjectServiceImpl implements ProjectService {
     private final UserMapper userMapper;
     private final MainTaskRepository mainTaskRepository;
     private final SubtaskRepository subtaskRepository;
-
+    private final NotificationService notificationService;
     // Manual constructor for dependency injection.
     // Lombok's @RequiredArgsConstructor can be used if all fields are 'final'.
     public ProjectServiceImpl(ProjectRepository projectRepository, UserRepository userRepository, UserMapper userMapper,
-                              MainTaskRepository mainTaskRepository, SubtaskRepository subtaskRepository) {
+                              MainTaskRepository mainTaskRepository, SubtaskRepository subtaskRepository,NotificationService notificationService) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.mainTaskRepository = mainTaskRepository;
         this.subtaskRepository = subtaskRepository;
+        this.notificationService=notificationService;
     }
 
     @Override
@@ -156,8 +155,21 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", projectId));
         User supervisor = userRepository.findById(supervisorId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", supervisorId));
-        project.setSiteSupervisor(supervisor);
-        projectRepository.save(project);
+
+        // Check if the supervisor is already assigned to prevent duplicate notifications
+        if (project.getSiteSupervisor() == null || !project.getSiteSupervisor().getId().equals(supervisor.getId())) {
+            project.setSiteSupervisor(supervisor);
+            projectRepository.save(project);
+
+            // Send notification to Site Supervisor
+            // CHANGE: project.getName() -> project.getTitle()
+            String message = String.format("You have been assigned as Site Supervisor to project '%s' (ID: %d).",
+                    project.getTitle(), project.getId());
+            notificationService.createNotification(supervisor.getId(), message, Notification.NotificationType.ASSIGNMENT);
+            System.out.println("Notification sent to Site Supervisor: " + supervisor.getUsername() + " for project " + project.getTitle());
+        } else {
+            System.out.println("Supervisor " + supervisor.getUsername() + " is already assigned to project " + project.getTitle() + ". No new assignment or notification sent.");
+        }
     }
 
     @Override
@@ -167,8 +179,21 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElseThrow(() -> new ResourceNotFoundException("Project", "id", projectId));
         User equipmentManager = userRepository.findById(equipmentManagerId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", equipmentManagerId));
-        project.setEquipmentManager(equipmentManager);
-        projectRepository.save(project);
+
+        // Check if the equipment manager is already assigned to prevent duplicate notifications
+        if (project.getEquipmentManager() == null || !project.getEquipmentManager().getId().equals(equipmentManager.getId())) {
+            project.setEquipmentManager(equipmentManager);
+            projectRepository.save(project);
+
+            // Send notification to Equipment Manager
+            // CHANGE: project.getName() -> project.getTitle()
+            String message = String.format("You have been assigned as Equipment Manager to project '%s' (ID: %d).",
+                    project.getTitle(), project.getId());
+            notificationService.createNotification(equipmentManager.getId(), message, Notification.NotificationType.ASSIGNMENT);
+            System.out.println("Notification sent to Equipment Manager: " + equipmentManager.getUsername() + " for project " + project.getTitle());
+        } else {
+            System.out.println("Equipment Manager " + equipmentManager.getUsername() + " is already assigned to project " + project.getTitle() + ". No new assignment or notification sent.");
+        }
     }
 
     // ─── DTO ↔ ENTITY Mapping ─────────────────────────────────────────────────

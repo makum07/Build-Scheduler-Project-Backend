@@ -239,6 +239,8 @@ public class EquipmentAvailabilityService {
         // explicitly calling delete on the repository ensures it.
         equipmentAssignmentRepository.delete(assignmentToDelete);
     }
+
+
     @Transactional(readOnly = true)
     public List<EquipmentAssignmentResponseDto> getAssignmentsForEquipment(Long equipmentId) {
         equipmentRepository.findById(equipmentId) // Check if equipment exists
